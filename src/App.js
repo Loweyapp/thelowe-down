@@ -252,7 +252,7 @@ function Sidebar({ view, setView, exportCSV, user, signOut }) {
     }}>
       <div style={{ marginBottom: 32 }}>
         <div style={{ fontSize: 19, fontWeight: 700, color: '#FFF', letterSpacing: '-0.3px' }}>💰 The LoweDown</div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Personal Finance</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Personal Finance · v1.0.1</div>
       </div>
       {NAV.map(({ id, label, Icon }) => {
         const active = view === id;
@@ -299,7 +299,7 @@ function TopHeader({ label, signOut }) {
       background: C.sidebar, padding: '14px 20px',
       display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
     }}>
-      <div style={{ fontSize: 17, fontWeight: 700, color: '#FFF' }}>💰 The LoweDown</div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: '#FFF' }}>💰 The LoweDown <span style={{fontSize:11, fontWeight:400, color:'rgba(255,255,255,0.38)'}}>v1.0.1</span></div>
       <div style={{ flex: 1 }} />
       <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{label}</div>
       <button onClick={signOut} title="Sign out" style={{
