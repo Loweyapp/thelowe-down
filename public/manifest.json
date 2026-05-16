@@ -1,6 +1,6 @@
 {
-  "name": "TheLowDown",
-  "short_name": "TheLowDown",
+  "name": "The LoweDown",
+  "short_name": "LoweDown",
   "description": "Personal finance tracker",
   "start_url": "/",
   "display": "standalone",
