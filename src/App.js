@@ -140,7 +140,9 @@ export default function App() {
 
   // Auth listener
   useEffect(() => {
-    getRedirectResult(auth).catch(() => {});
+    getRedirectResult(auth)
+      .then(result => { if (result?.user) setUser(result.user); })
+      .catch(() => {});
     const unsub = onAuthStateChanged(auth, u => {
       setUser(u);
       setAuthLoading(false);
@@ -173,7 +175,16 @@ export default function App() {
     return () => { unsubTx(); unsubCat(); };
   }, [user]);
 
-  const signIn  = () => signInWithRedirect(auth, new GoogleAuthProvider());
+  const signIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        await signInWithRedirect(auth, provider);
+      }
+    }
+  };
   const signOut = () => firebaseSignOut(auth);
 
   const addTx = async tx => {
