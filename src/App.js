@@ -103,7 +103,7 @@ function LoginScreen({ onSignIn }) {
       background: C.sidebar, fontFamily: "'Outfit', sans-serif",
     }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>💰</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: '#FFF', marginBottom: 8 }}>TheLowDown</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: '#FFF', marginBottom: 8 }}>The LoweDown</div>
       <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 48 }}>Your personal finance tracker</div>
       <button onClick={onSignIn} style={{
         display: 'flex', alignItems: 'center', gap: 12,
@@ -217,7 +217,7 @@ export default function App() {
     const csv = Papa.unparse(txs.map(({ id, ...t }) => t));
     const a   = Object.assign(document.createElement('a'), {
       href:     URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
-      download: 'thelowe-down-export.csv',
+      download: 'the-lowedown-export.csv',
     });
     a.click();
   };
@@ -251,7 +251,7 @@ function Sidebar({ view, setView, exportCSV, user, signOut }) {
       padding: '28px 16px 24px', gap: 4, flexShrink: 0,
     }}>
       <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 19, fontWeight: 700, color: '#FFF', letterSpacing: '-0.3px' }}>💰 TheLowDown</div>
+        <div style={{ fontSize: 19, fontWeight: 700, color: '#FFF', letterSpacing: '-0.3px' }}>💰 The LoweDown</div>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Personal Finance</div>
       </div>
       {NAV.map(({ id, label, Icon }) => {
@@ -299,7 +299,7 @@ function TopHeader({ label, signOut }) {
       background: C.sidebar, padding: '14px 20px',
       display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
     }}>
-      <div style={{ fontSize: 17, fontWeight: 700, color: '#FFF' }}>💰 TheLowDown</div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: '#FFF' }}>💰 The LoweDown</div>
       <div style={{ flex: 1 }} />
       <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{label}</div>
       <button onClick={signOut} title="Sign out" style={{
