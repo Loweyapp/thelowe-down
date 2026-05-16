@@ -16,7 +16,7 @@ import {
   onSnapshot, query, orderBy, writeBatch,
 } from 'firebase/firestore';
 import {
-  getAuth, signInWithPopup, GoogleAuthProvider,
+  getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider,
   onAuthStateChanged, signOut as firebaseSignOut,
 } from 'firebase/auth';
 
@@ -140,6 +140,7 @@ export default function App() {
 
   // Auth listener
   useEffect(() => {
+    getRedirectResult(auth).catch(() => {});
     const unsub = onAuthStateChanged(auth, u => {
       setUser(u);
       setAuthLoading(false);
@@ -172,7 +173,7 @@ export default function App() {
     return () => { unsubTx(); unsubCat(); };
   }, [user]);
 
-  const signIn  = () => signInWithPopup(auth, new GoogleAuthProvider());
+  const signIn  = () => signInWithRedirect(auth, new GoogleAuthProvider());
   const signOut = () => firebaseSignOut(auth);
 
   const addTx = async tx => {
