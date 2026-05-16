@@ -5,11 +5,33 @@ import {
 } from 'recharts';
 import {
   LayoutDashboard, List, Tag, Plus, Upload, Download,
-  TrendingUp, TrendingDown, PiggyBank, Landmark, Trash2,
+  TrendingUp, TrendingDown, PiggyBank, Trash2,
   ChevronLeft, ChevronRight, Check, AlertCircle,
-  ArrowUpRight, ArrowDownRight, X,
+  ArrowUpRight, ArrowDownRight, LogOut,
 } from 'lucide-react';
 import Papa from 'papaparse';
+import { initializeApp } from 'firebase/app';
+import {
+  getFirestore, collection, doc, addDoc, deleteDoc,
+  onSnapshot, query, orderBy, writeBatch,
+} from 'firebase/firestore';
+import {
+  getAuth, signInWithPopup, GoogleAuthProvider,
+  onAuthStateChanged, signOut as firebaseSignOut,
+} from 'firebase/auth';
+
+// ===== FIREBASE =====
+const firebaseConfig = {
+  apiKey: "AIzaSyD7qjTrmTyTO22ZdWze3RmdiboMwgIuDLk",
+  authDomain: "thelowe-down.firebaseapp.com",
+  projectId: "thelowe-down",
+  storageBucket: "thelowe-down.firebasestorage.app",
+  messagingSenderId: "679113035762",
+  appId: "1:679113035762:web:0b5fd9e3bebdfee05f656b",
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const db  = getFirestore(firebaseApp);
+const auth = getAuth(firebaseApp);
 
 // ===== DESIGN TOKENS =====
 const C = {
@@ -42,19 +64,19 @@ const NAV = [
 ];
 
 const DEFAULT_CATS = [
-  { id: 1, name: 'Food & Drink',     emoji: '🍔', color: '#F97316', budget: 300 },
-  { id: 2, name: 'Transport',        emoji: '🚗', color: '#3B82F6', budget: 150 },
-  { id: 3, name: 'Shopping',         emoji: '🛍️', color: '#EC4899', budget: 200 },
-  { id: 4, name: 'Entertainment',    emoji: '🎬', color: '#8B5CF6', budget: 100 },
-  { id: 5, name: 'Health',           emoji: '💊', color: '#22C55E', budget:  50 },
-  { id: 6, name: 'Bills & Utilities',emoji: '🏠', color: '#EF4444', budget: 400 },
-  { id: 7, name: 'Subscriptions',    emoji: '📱', color: '#0ABFA3', budget:  50 },
-  { id: 8, name: 'Other',            emoji: '📦', color: '#6B7280', budget: 100 },
+  { name: 'Food & Drink',      emoji: '🍔', color: '#F97316', budget: 300 },
+  { name: 'Transport',         emoji: '🚗', color: '#3B82F6', budget: 150 },
+  { name: 'Shopping',          emoji: '🛍️', color: '#EC4899', budget: 200 },
+  { name: 'Entertainment',     emoji: '🎬', color: '#8B5CF6', budget: 100 },
+  { name: 'Health',            emoji: '💊', color: '#22C55E', budget:  50 },
+  { name: 'Bills & Utilities', emoji: '🏠', color: '#EF4444', budget: 400 },
+  { name: 'Subscriptions',     emoji: '📱', color: '#0ABFA3', budget:  50 },
+  { name: 'Other',             emoji: '📦', color: '#6B7280', budget: 100 },
 ];
 
 // ===== HELPERS =====
-const gbp     = n  => `£${Math.abs(n).toFixed(2)}`;
-const mkKey   = d  => d.slice(0, 7);
+const gbp      = n  => `£${Math.abs(n).toFixed(2)}`;
+const mkKey    = d  => d.slice(0, 7);
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const mkLabel  = k  => {
   const [y, m] = k.split('-');
@@ -72,30 +94,113 @@ function useBreakpoint() {
   return mobile;
 }
 
+// ===== LOGIN SCREEN =====
+function LoginScreen({ onSignIn }) {
+  return (
+    <div style={{
+      height: '100dvh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      background: C.sidebar, fontFamily: "'Outfit', sans-serif",
+    }}>
+      <div style={{ fontSize: 56, marginBottom: 16 }}>💰</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: '#FFF', marginBottom: 8 }}>TheLowDown</div>
+      <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 48 }}>Your personal finance tracker</div>
+      <button onClick={onSignIn} style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '14px 32px', borderRadius: 12, border: 'none',
+        background: C.primary, color: '#FFF',
+        fontSize: 16, fontWeight: 600, cursor: 'pointer',
+        fontFamily: "'Outfit', sans-serif",
+      }}>
+        Sign in with Google
+      </button>
+    </div>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div style={{
+      height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: C.sidebar,
+    }}>
+      <div style={{ fontSize: 56 }}>💰</div>
+    </div>
+  );
+}
+
 // ===== APP ROOT =====
 export default function App() {
-  const [view,   setView]   = useState('dashboard');
-  const [txs,    setTxs]    = useState([]);
-  const [cats,   setCats]   = useState(DEFAULT_CATS);
-  const [loaded, setLoaded] = useState(false);
+  const [user,        setUser]        = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [view,        setView]        = useState('dashboard');
+  const [txs,         setTxs]         = useState([]);
+  const [cats,        setCats]        = useState([]);
   const mobile = useBreakpoint();
 
+  // Auth listener
   useEffect(() => {
-    const t = localStorage.getItem('tld-v3-transactions');
-    const c = localStorage.getItem('tld-v3-categories');
-    if (t) setTxs(JSON.parse(t));
-    if (c) setCats(JSON.parse(c));
-    setLoaded(true);
+    const unsub = onAuthStateChanged(auth, u => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return unsub;
   }, []);
 
-  useEffect(() => { if (loaded) localStorage.setItem('tld-v3-transactions', JSON.stringify(txs)); }, [txs, loaded]);
-  useEffect(() => { if (loaded) localStorage.setItem('tld-v3-categories',    JSON.stringify(cats)); }, [cats, loaded]);
+  // Firestore listeners — run when user logs in
+  useEffect(() => {
+    if (!user) return;
 
-  const addTx    = tx  => setTxs(p  => [tx, ...p].sort((a, b) => b.date.localeCompare(a.date)));
-  const deleteTx = id  => setTxs(p  => p.filter(t => t.id !== id));
-  const addCat   = cat => setCats(p => [...p, { ...cat, id: Date.now() }]);
-  const deleteCat = id => setCats(p => p.filter(c => c.id !== id));
-  const importTxs = rows => setTxs(p => [...rows, ...p].sort((a, b) => b.date.localeCompare(a.date)));
+    const txRef  = collection(db, 'users', user.uid, 'transactions');
+    const catRef = collection(db, 'users', user.uid, 'categories');
+
+    const unsubTx = onSnapshot(
+      query(txRef, orderBy('date', 'desc')),
+      snap => setTxs(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    );
+
+    const unsubCat = onSnapshot(catRef, async snap => {
+      if (snap.empty) {
+        const batch = writeBatch(db);
+        DEFAULT_CATS.forEach(cat => batch.set(doc(catRef), cat));
+        await batch.commit();
+      } else {
+        setCats(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      }
+    });
+
+    return () => { unsubTx(); unsubCat(); };
+  }, [user]);
+
+  const signIn  = () => signInWithPopup(auth, new GoogleAuthProvider());
+  const signOut = () => firebaseSignOut(auth);
+
+  const addTx = async tx => {
+    const { id, ...data } = tx;
+    await addDoc(collection(db, 'users', user.uid, 'transactions'), data);
+  };
+
+  const deleteTx = async id => {
+    await deleteDoc(doc(db, 'users', user.uid, 'transactions', String(id)));
+  };
+
+  const addCat = async cat => {
+    const { id, ...data } = cat;
+    await addDoc(collection(db, 'users', user.uid, 'categories'), data);
+  };
+
+  const deleteCat = async id => {
+    await deleteDoc(doc(db, 'users', user.uid, 'categories', String(id)));
+  };
+
+  const importTxs = async rows => {
+    const batch = writeBatch(db);
+    rows.forEach(({ id, ...data }) => {
+      batch.set(doc(collection(db, 'users', user.uid, 'transactions')), data);
+    });
+    await batch.commit();
+  };
+
   const exportCSV = () => {
     const csv = Papa.unparse(txs.map(({ id, ...t }) => t));
     const a   = Object.assign(document.createElement('a'), {
@@ -105,16 +210,18 @@ export default function App() {
     a.click();
   };
 
-  const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, importTxs, exportCSV, setView, mobile };
+  if (authLoading) return <LoadingScreen />;
+  if (!user)       return <LoginScreen onSignIn={signIn} />;
 
-  const VIEWS = { dashboard: DashboardView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView };
-  const View = VIEWS[view] || DashboardView;
+  const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, importTxs, exportCSV, setView, mobile };
+  const VIEWS  = { dashboard: DashboardView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView };
+  const View   = VIEWS[view] || DashboardView;
 
   return (
     <div style={{ display: 'flex', height: '100dvh', background: C.bg, fontFamily: "'Outfit', sans-serif", overflow: 'hidden' }}>
-      {!mobile && <Sidebar view={view} setView={setView} exportCSV={exportCSV} />}
+      {!mobile && <Sidebar view={view} setView={setView} exportCSV={exportCSV} user={user} signOut={signOut} />}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        {mobile && <TopHeader label={NAV.find(n => n.id === view)?.label || ''} />}
+        {mobile && <TopHeader label={NAV.find(n => n.id === view)?.label || ''} signOut={signOut} />}
         <div style={{ flex: 1, overflowY: 'auto', padding: mobile ? '16px 16px 8px' : '28px 32px' }}>
           <View {...shared} />
         </div>
@@ -125,7 +232,7 @@ export default function App() {
 }
 
 // ===== NAVIGATION =====
-function Sidebar({ view, setView, exportCSV }) {
+function Sidebar({ view, setView, exportCSV, user, signOut }) {
   return (
     <nav style={{
       width: 220, background: C.sidebar, display: 'flex', flexDirection: 'column',
@@ -155,15 +262,26 @@ function Sidebar({ view, setView, exportCSV }) {
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
         borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer',
         background: 'transparent', color: 'rgba(255,255,255,0.55)',
-        fontSize: 13, fontFamily: "'Outfit', sans-serif",
+        fontSize: 13, fontFamily: "'Outfit', sans-serif", marginBottom: 8,
       }}>
         <Download size={16} />Export CSV
       </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+        {user.photoURL && <img src={user.photoURL} alt="" style={{ width: 24, height: 24, borderRadius: '50%' }} />}
+        <div style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {user.displayName || user.email}
+        </div>
+        <button onClick={signOut} title="Sign out" style={{
+          background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4,
+        }}>
+          <LogOut size={14} />
+        </button>
+      </div>
     </nav>
   );
 }
 
-function TopHeader({ label }) {
+function TopHeader({ label, signOut }) {
   return (
     <div style={{
       background: C.sidebar, padding: '14px 20px',
@@ -172,6 +290,11 @@ function TopHeader({ label }) {
       <div style={{ fontSize: 17, fontWeight: 700, color: '#FFF' }}>💰 TheLowDown</div>
       <div style={{ flex: 1 }} />
       <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{label}</div>
+      <button onClick={signOut} title="Sign out" style={{
+        background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4,
+      }}>
+        <LogOut size={16} />
+      </button>
     </div>
   );
 }
@@ -283,15 +406,14 @@ const RANGES = [
 function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }) {
   const [rangeIdx, setRangeIdx] = useState(2);
 
-  const cutoff  = RANGES[rangeIdx].days === Infinity ? null
+  const cutoff   = RANGES[rangeIdx].days === Infinity ? null
     : new Date(Date.now() - RANGES[rangeIdx].days * 86400000).toISOString().slice(0, 10);
   const filtered = cutoff ? txs.filter(t => t.date >= cutoff) : txs;
 
-  const sum = (type) => filtered.filter(t => t.type === type).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const sum    = type => filtered.filter(t => t.type === type).reduce((s, t) => s + Math.abs(t.amount), 0);
   const income = sum('income'), expense = sum('expense'), saving = sum('saving'), invest = sum('investment');
   const net    = income - expense - saving - invest;
 
-  // Area chart: group by month
   const byMonth = {};
   filtered.forEach(t => {
     const k = mkKey(t.date);
@@ -303,7 +425,6 @@ function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }) {
     .sort((a, b) => a.month.localeCompare(b.month))
     .map(d => ({ ...d, month: mkLabel(d.month) }));
 
-  // Donut: expenses by category
   const byCat = {};
   filtered.filter(t => t.type === 'expense').forEach(t => {
     byCat[t.category] = (byCat[t.category] || 0) + Math.abs(t.amount);
@@ -316,15 +437,13 @@ function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Stat cards */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <StatCard label="Income"          value={gbp(income)}              color={C.income}     Icon={TrendingUp} />
-        <StatCard label="Expenses"        value={gbp(expense)}             color={C.expense}    Icon={TrendingDown} />
-        <StatCard label="Net Balance"     value={gbp(net)}                 color={net >= 0 ? C.income : C.expense} Icon={net >= 0 ? ArrowUpRight : ArrowDownRight} />
-        <StatCard label="Saved/Invested"  value={gbp(saving + invest)}     color={C.saving}     Icon={PiggyBank} />
+        <StatCard label="Income"         value={gbp(income)}          color={C.income}                                    Icon={TrendingUp} />
+        <StatCard label="Expenses"       value={gbp(expense)}         color={C.expense}                                   Icon={TrendingDown} />
+        <StatCard label="Net Balance"    value={gbp(net)}             color={net >= 0 ? C.income : C.expense}             Icon={net >= 0 ? ArrowUpRight : ArrowDownRight} />
+        <StatCard label="Saved/Invested" value={gbp(saving + invest)} color={C.saving}                                   Icon={PiggyBank} />
       </div>
 
-      {/* Cash flow chart */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontWeight: 600, fontSize: 16 }}>Cash Flow</div>
@@ -368,7 +487,6 @@ function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }) {
         )}
       </Card>
 
-      {/* Donut + Recent */}
       <div style={{ display: 'flex', gap: 16, flexWrap: mobile ? 'wrap' : 'nowrap' }}>
         <Card style={{ flex: mobile ? '1 1 100%' : '1 1 260px' }}>
           <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 12 }}>Expense Breakdown</div>
@@ -425,10 +543,10 @@ function SummaryView({ txs, cats }) {
   const [idx, setIdx] = useState(0);
   const sel = months[idx] || mkKey(todayStr());
 
-  const mTxs    = txs.filter(t => mkKey(t.date) === sel);
-  const sum      = type => mTxs.filter(t => t.type === type).reduce((s, t) => s + Math.abs(t.amount), 0);
-  const income   = sum('income'), expense = sum('expense'), saving = sum('saving'), invest = sum('investment');
-  const net      = income - expense - saving - invest;
+  const mTxs   = txs.filter(t => mkKey(t.date) === sel);
+  const sum     = type => mTxs.filter(t => t.type === type).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const income  = sum('income'), expense = sum('expense'), saving = sum('saving'), invest = sum('investment');
+  const net     = income - expense - saving - invest;
 
   const catData = cats
     .map(cat => ({
@@ -442,14 +560,12 @@ function SummaryView({ txs, cats }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Month navigator */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <NavBtn onClick={() => setIdx(i => Math.min(i + 1, months.length - 1))} disabled={idx >= months.length - 1}><ChevronLeft size={18} /></NavBtn>
         <div style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: 20 }}>{mkLabel(sel)}</div>
         <NavBtn onClick={() => setIdx(i => Math.max(i - 1, 0))} disabled={idx === 0}><ChevronRight size={18} /></NavBtn>
       </div>
 
-      {/* Stat pills */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {[
           { label: 'Income',   value: gbp(income),  color: C.income },
@@ -468,7 +584,6 @@ function SummaryView({ txs, cats }) {
         ))}
       </div>
 
-      {/* Budget vs Actuals */}
       {catData.length > 0 && (
         <Card>
           <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 16 }}>Budget vs Actuals</div>
@@ -488,7 +603,6 @@ function SummaryView({ txs, cats }) {
         </Card>
       )}
 
-      {/* Category table */}
       <Card>
         <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 14 }}>Category Breakdown</div>
         {catData.length === 0
@@ -532,8 +646,8 @@ function SummaryView({ txs, cats }) {
 }
 
 // ===== CATEGORIES VIEW =====
-const EMOJI_OPTS  = ['🍔','🚗','🛍️','🎬','💊','🏠','📱','📦','✈️','💪','🎓','💇','🐾','🎁','🍕','☕','🎮','📚','💡','🌿','🎵','⚽','🏖️','🍷'];
-const COLOR_OPTS  = ['#F97316','#3B82F6','#EC4899','#8B5CF6','#22C55E','#EF4444','#0ABFA3','#6B7280','#F59E0B','#06B6D4','#84CC16','#F43F5E'];
+const EMOJI_OPTS = ['🍔','🚗','🛍️','🎬','💊','🏠','📱','📦','✈️','💪','🎓','💇','🐾','🎁','🍕','☕','🎮','📚','💡','🌿','🎵','⚽','🏖️','🍷'];
+const COLOR_OPTS = ['#F97316','#3B82F6','#EC4899','#8B5CF6','#22C55E','#EF4444','#0ABFA3','#6B7280','#F59E0B','#06B6D4','#84CC16','#F43F5E'];
 
 function CategoriesView({ cats, addCat, deleteCat }) {
   const [open, setOpen] = useState(false);
@@ -634,8 +748,8 @@ function AddView({ addTx, cats, setView }) {
   const [ok, setOk] = useState(false);
 
   const getCats = type =>
-    type === 'income'     ? [{ id: 'i', name: 'Income',      emoji: '💵' }]
-    : type === 'saving'   ? [{ id: 's', name: 'Savings',     emoji: '🏦' }]
+    type === 'income'      ? [{ id: 'i', name: 'Income',      emoji: '💵' }]
+    : type === 'saving'    ? [{ id: 's', name: 'Savings',     emoji: '🏦' }]
     : type === 'investment'? [{ id: 'v', name: 'Investments', emoji: '📈' }]
     : cats;
 
@@ -672,7 +786,6 @@ function AddView({ addTx, cats, setView }) {
       <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 20 }}>Add Transaction</div>
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Type */}
           <Field label="Type">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {TX_TYPES.map(t => (
