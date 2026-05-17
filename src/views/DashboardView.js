@@ -117,7 +117,7 @@ export default function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                {pieData.slice(0, 5).map((d, i) => (
+                {pieData.map((d, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                     <div style={{ width: 10, height: 10, borderRadius: 3, background: d.color, flexShrink: 0 }} />
                     <div style={{ flex: 1, color: C.text }}>{d.name}</div>
