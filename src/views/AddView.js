@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
-import { C, TX_TYPES, todayStr } from '../constants.js';
+import { C, TX_TYPES, ACCOUNTS, todayStr } from '../constants.js';
 import { Card, Field } from '../components/UI.js';
 
 export default function AddView({ addTx, cats }) {
-  const [form, setForm] = useState({ type: 'expense', date: todayStr(), description: '', category: '', amount: '' });
+  const [form, setForm] = useState({
+    account: 'Alex', type: 'expense', date: todayStr(),
+    description: '', category: '', amount: '',
+  });
   const [ok, setOk] = useState(false);
 
   const getCats = type =>
@@ -30,6 +33,7 @@ export default function AddView({ addTx, cats }) {
     if (!form.description.trim() || !form.category || isNaN(amt) || amt <= 0) return;
     addTx({
       id:          Date.now(),
+      account:     form.account,
       date:        form.date,
       description: form.description.trim(),
       category:    form.category,
@@ -47,6 +51,21 @@ export default function AddView({ addTx, cats }) {
       <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 20 }}>Add Transaction</div>
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          <Field label="Account">
+            <div style={{ display: 'flex', gap: 8 }}>
+              {ACCOUNTS.map(a => (
+                <button key={a} onClick={() => setForm(f => ({ ...f, account: a }))} style={{
+                  flex: 1, padding: '10px 8px', borderRadius: 10, cursor: 'pointer',
+                  border:     `2px solid ${form.account === a ? C.primary : C.border}`,
+                  background: form.account === a ? `${C.primary}14` : 'transparent',
+                  color:      form.account === a ? C.primary : C.muted,
+                  fontWeight: 600, fontSize: 14, fontFamily: "'Outfit', sans-serif",
+                }}>{a}</button>
+              ))}
+            </div>
+          </Field>
+
           <Field label="Type">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {TX_TYPES.map(t => (

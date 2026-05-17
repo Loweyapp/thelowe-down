@@ -3,15 +3,17 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { C, gbp, mkKey, mkLabel, todayStr } from '../constants.js';
+import { C, ACCOUNTS, gbp, mkKey, mkLabel, todayStr } from '../constants.js';
 import { Card, EmptyState, NavBtn } from '../components/UI.js';
 
 export default function SummaryView({ txs, cats }) {
   const months = [...new Set(txs.map(t => mkKey(t.date)))].sort().reverse();
-  const [idx, setIdx] = useState(0);
+  const [idx,     setIdx]    = useState(0);
+  const [account, setAccount] = useState('All');
   const sel = months[idx] || mkKey(todayStr());
 
-  const mTxs  = txs.filter(t => mkKey(t.date) === sel);
+  const acctTxs = account === 'All' ? txs : txs.filter(t => t.account === account);
+  const mTxs    = acctTxs.filter(t => mkKey(t.date) === sel);
   const sum   = type => mTxs.filter(t => t.type === type).reduce((s, t) => s + Math.abs(t.amount), 0);
   const income = sum('income'), expense = sum('expense'), saving = sum('saving'), invest = sum('investment');
   const net   = income - expense - saving - invest;
@@ -27,6 +29,17 @@ export default function SummaryView({ txs, cats }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {['All', ...ACCOUNTS].map(a => (
+          <button key={a} onClick={() => setAccount(a)} style={{
+            padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'pointer',
+            background: account === a ? C.primary : C.card,
+            color:      account === a ? '#FFF' : C.muted,
+            fontWeight: 600, fontSize: 13, fontFamily: "'Outfit', sans-serif",
+            border: `1px solid ${account === a ? C.primary : C.border}`,
+          }}>{a}</button>
+        ))}
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <NavBtn onClick={() => setIdx(i => Math.min(i + 1, months.length - 1))} disabled={idx >= months.length - 1}>
           <ChevronLeft size={18} />

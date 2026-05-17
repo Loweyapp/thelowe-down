@@ -64,7 +64,17 @@ export function TxRow({ tx, onDelete, cats }) {
         }}>
           {tx.description}
         </div>
-        <div style={{ fontSize: 12, color: C.muted }}>{tx.category} · {tx.date}</div>
+        <div style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 4 }}>
+          {tx.account && (
+            <span style={{
+              padding: '1px 6px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+              background: tx.account === 'Alex' ? '#0ABFA318' : '#8B5CF618',
+              color:      tx.account === 'Alex' ? C.primary   : '#8B5CF6',
+            }}>{tx.account}</span>
+          )}
+          {tx.account && <span>·</span>}
+          <span>{tx.category} · {tx.date}</span>
+        </div>
       </div>
       <div style={{ fontWeight: 700, fontSize: 15, color, flexShrink: 0 }}>
         {plus ? '+' : '-'}{gbp(tx.amount)}

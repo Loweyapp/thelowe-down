@@ -6,15 +6,17 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { C, RANGES, gbp, mkKey, mkLabel } from '../constants.js';
+import { C, RANGES, ACCOUNTS, gbp, mkKey, mkLabel } from '../constants.js';
 import { Card, StatCard, TxRow, EmptyState } from '../components/UI.js';
 
 export default function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }) {
   const [rangeIdx, setRangeIdx] = useState(2);
+  const [account,  setAccount]  = useState('All');
 
   const cutoff   = RANGES[rangeIdx].days === Infinity ? null
     : new Date(Date.now() - RANGES[rangeIdx].days * 86400000).toISOString().slice(0, 10);
-  const filtered = cutoff ? txs.filter(t => t.date >= cutoff) : txs;
+  const byDate   = cutoff ? txs.filter(t => t.date >= cutoff) : txs;
+  const filtered = account === 'All' ? byDate : byDate.filter(t => t.account === account);
 
   const sum    = type => filtered.filter(t => t.type === type).reduce((s, t) => s + Math.abs(t.amount), 0);
   const income = sum('income'), expense = sum('expense'), saving = sum('saving'), invest = sum('investment');
@@ -42,6 +44,17 @@ export default function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {['All', ...ACCOUNTS].map(a => (
+          <button key={a} onClick={() => setAccount(a)} style={{
+            padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'pointer',
+            background: account === a ? C.primary : C.card,
+            color:      account === a ? '#FFF' : C.muted,
+            fontWeight: 600, fontSize: 13, fontFamily: "'Outfit', sans-serif",
+            border: `1px solid ${account === a ? C.primary : C.border}`,
+          }}>{a}</button>
+        ))}
+      </div>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <StatCard label="Income"         value={gbp(income)}          color={C.income}                        Icon={TrendingUp} />
         <StatCard label="Expenses"       value={gbp(expense)}         color={C.expense}                       Icon={TrendingDown} />
@@ -127,8 +140,8 @@ export default function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }
               <Download size={13} />Export
             </button>
           </div>
-          {txs.slice(0, 12).length > 0
-            ? txs.slice(0, 12).map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} cats={cats} />)
+          {filtered.slice(0, 12).length > 0
+            ? filtered.slice(0, 12).map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} cats={cats} />)
             : <EmptyState height={120} message="No transactions yet. Add one or import a CSV." />
           }
         </Card>
