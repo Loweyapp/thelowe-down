@@ -6,7 +6,7 @@ import {
   Banknote, PiggyBank, TrendingUp,
 } from 'lucide-react';
 
-export const VERSION = 'v1.3.0';
+export const VERSION = 'v1.3.1';
 
 export const C = {
   primary:    '#0ABFA3',
@@ -59,16 +59,17 @@ export const ACCOUNTS = ['Alex', 'Kelly'];
 
 export const DEFAULT_CATS = [
   { name: 'Groceries',         icon: 'ShoppingCart',    color: '#F97316', budget: 400 },
-  { name: 'Dining Out',        icon: 'UtensilsCrossed', color: '#FB923C', budget: 200 },
+  { name: 'Dining Out',        icon: 'UtensilsCrossed', color: '#F43F5E', budget: 200 },
   { name: 'Transport',         icon: 'Bus',             color: '#3B82F6', budget: 150 },
-  { name: 'Car',               icon: 'Car',             color: '#1D4ED8', budget: 100 },
+  { name: 'Car',               icon: 'Car',             color: '#6366F1', budget: 100 },
   { name: 'Shopping',          icon: 'ShoppingBag',     color: '#EC4899', budget: 200 },
   { name: 'Entertainment',     icon: 'Film',            color: '#8B5CF6', budget: 100 },
-  { name: 'Health & Medical',  icon: 'Heart',           color: '#22C55E', budget:  80 },
+  { name: 'Health & Medical',  icon: 'Activity',        color: '#14B8A6', budget:  80 },
   { name: 'Holiday & Travel',  icon: 'Plane',           color: '#06B6D4', budget: 200 },
-  { name: 'Home & Garden',     icon: 'Leaf',            color: '#84CC16', budget: 100 },
+  { name: 'Home & Garden',     icon: 'Home',            color: '#84CC16', budget: 100 },
   { name: 'Bills & Utilities', icon: 'Zap',             color: '#EF4444', budget: 400 },
-  { name: 'Subscriptions',     icon: 'Smartphone',      color: '#0ABFA3', budget:  80 },
+  { name: 'Subscriptions',     icon: 'CreditCard',      color: '#F59E0B', budget:  80 },
+  { name: 'Gifts',             icon: 'Gift',            color: '#F472B6', budget:  50 },
   { name: 'Other',             icon: 'Package',         color: '#6B7280', budget: 100 },
 ];
 
