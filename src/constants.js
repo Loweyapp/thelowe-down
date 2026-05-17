@@ -6,7 +6,7 @@ import {
   Banknote, PiggyBank, TrendingUp,
 } from 'lucide-react';
 
-export const VERSION = 'v1.3.2';
+export const VERSION = 'v1.3.3';
 
 export const C = {
   primary:    '#0ABFA3',
@@ -93,7 +93,7 @@ export const RANGES = [
   { label: 'All', days: Infinity },
 ];
 
-export const gbp      = n => `£${Math.abs(n).toFixed(2)}`;
+export const gbp      = n => `£${Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const mkKey    = d => d.slice(0, 7);
 export const todayStr = () => new Date().toISOString().slice(0, 10);
 export const mkLabel  = k => {
