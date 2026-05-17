@@ -1,14 +1,55 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Check, AlertCircle } from 'lucide-react';
+import { Upload, Check, AlertCircle, Database } from 'lucide-react';
 import Papa from 'papaparse';
 import { C, TYPE_COLOR, todayStr } from '../constants.js';
 import { Card, Btn } from '../components/UI.js';
 
+const MAY_2026 = [
+  { date:'2026-05-01', description:'Ryanair tea',                   category:'Holiday & Travel', amount:-3.25,   type:'expense', account:'Alex'  },
+  { date:'2026-05-02', description:'Vinted earnings',               category:'Income',           amount:23.74,   type:'income',  account:'Kelly' },
+  { date:'2026-05-03', description:"Alex's Riga trip expenses",     category:'Holiday & Travel', amount:-420.00, type:'expense', account:'Alex'  },
+  { date:'2026-05-03', description:'Riga - Kelly cash',             category:'Holiday & Travel', amount:-46.00,  type:'expense', account:'Kelly' },
+  { date:'2026-05-03', description:'Riga - Kelly Monzo',            category:'Holiday & Travel', amount:-25.20,  type:'expense', account:'Kelly' },
+  { date:'2026-05-03', description:'Chinese takeaway',              category:'Dining Out',       amount:-31.40,  type:'expense', account:'Kelly' },
+  { date:'2026-05-04', description:'Alex tube',                     category:'Transport',        amount:-7.20,   type:'expense', account:'Alex'  },
+  { date:'2026-05-04', description:'K festival - snacks',           category:'Dining Out',       amount:-18.30,  type:'expense', account:'Kelly' },
+  { date:'2026-05-04', description:'Korean food & Ginseng tea',     category:'Groceries',        amount:-47.66,  type:'expense', account:'Kelly' },
+  { date:'2026-05-04', description:'Kelly tube',                    category:'Transport',        amount:-7.20,   type:'expense', account:'Kelly' },
+  { date:'2026-05-05', description:'Cinema popcorn',                category:'Entertainment',    amount:-14.61,  type:'expense', account:'Alex'  },
+  { date:'2026-05-05', description:'Alex tube',                     category:'Transport',        amount:-10.70,  type:'expense', account:'Alex'  },
+  { date:'2026-05-06', description:'Parking',                       category:'Transport',        amount:-3.00,   type:'expense', account:'Alex'  },
+  { date:'2026-05-06', description:'M&S',                          category:'Groceries',        amount:-5.86,   type:'expense', account:'Kelly' },
+  { date:'2026-05-07', description:'Alex Audible',                  category:'Entertainment',    amount:-4.49,   type:'expense', account:'Alex'  },
+  { date:'2026-05-07', description:'Kelly tube',                    category:'Transport',        amount:-7.20,   type:'expense', account:'Kelly' },
+  { date:'2026-05-07', description:'Kelly tube',                    category:'Transport',        amount:-3.60,   type:'expense', account:'Kelly' },
+  { date:'2026-05-07', description:'Hand soap wash',                category:'Shopping',         amount:-40.60,  type:'expense', account:'Alex'  },
+  { date:'2026-05-07', description:'International supermarket',     category:'Groceries',        amount:-1.99,   type:'expense', account:'Alex'  },
+  { date:'2026-05-07', description:'Snacks',                        category:'Groceries',        amount:-57.70,  type:'expense', account:'Alex'  },
+  { date:'2026-05-07', description:'Alex History podcast',          category:'Entertainment',    amount:-7.99,   type:'expense', account:'Alex'  },
+  { date:'2026-05-08', description:'Stansted drop off',             category:'Transport',        amount:-10.00,  type:'expense', account:'Alex'  },
+  { date:'2026-05-08', description:'Lebara phone plan',             category:'Subscriptions',    amount:-3.00,   type:'expense', account:'Kelly' },
+  { date:'2026-05-08', description:"Gordon's wine bar",             category:'Dining Out',       amount:-63.74,  type:'expense', account:'Kelly' },
+  { date:'2026-05-08', description:'Kelly tube',                    category:'Transport',        amount:-7.80,   type:'expense', account:'Kelly' },
+  { date:'2026-05-09', description:'COSTCO',                        category:'Groceries',        amount:-126.28, type:'expense', account:'Alex'  },
+  { date:'2026-05-09', description:'Flowers for garden',            category:'Home & Garden',    amount:-37.71,  type:'expense', account:'Alex'  },
+  { date:'2026-05-09', description:"Sainsbury's",                   category:'Groceries',        amount:-19.20,  type:'expense', account:'Alex'  },
+  { date:'2026-05-09', description:'Tesco',                         category:'Groceries',        amount:-10.10,  type:'expense', account:'Alex'  },
+  { date:'2026-05-09', description:'International supermarket',     category:'Groceries',        amount:-6.06,   type:'expense', account:'Kelly' },
+  { date:'2026-05-09', description:"Sainsbury's savings card",      category:'Groceries',        amount:-102.30, type:'expense', account:'Kelly' },
+  { date:'2026-05-11', description:'Drop off at Gatwick',           category:'Transport',        amount:-20.00,  type:'expense', account:'Alex'  },
+  { date:'2026-05-11', description:'Car cleaning',                  category:'Car',              amount:-35.00,  type:'expense', account:'Alex'  },
+  { date:'2026-05-12', description:'Dart bridge charge',            category:'Transport',        amount:-7.00,   type:'expense', account:'Alex'  },
+  { date:'2026-05-12', description:'Patreon channel',               category:'Entertainment',    amount:-9.60,   type:'expense', account:'Alex'  },
+  { date:'2026-05-13', description:'Alex glasses and eye check',    category:'Health & Medical', amount:-240.00, type:'expense', account:'Alex'  },
+  { date:'2026-05-13', description:'Kelly paid Sudeng - Sapphire',  category:'Holiday & Travel', amount:-262.72, type:'expense', account:'Kelly' },
+];
+
 export default function ImportView({ importTxs, setView }) {
-  const [dragOver, setDragOver] = useState(false);
-  const [preview,  setPreview]  = useState(null);
-  const [error,    setError]    = useState('');
-  const [done,     setDone]     = useState(false);
+  const [dragOver,   setDragOver]   = useState(false);
+  const [preview,    setPreview]    = useState(null);
+  const [error,      setError]      = useState('');
+  const [done,       setDone]       = useState(false);
+  const [seeding,    setSeeding]    = useState(false);
   const fileRef = useRef();
 
   const parse = file => {
@@ -40,14 +81,36 @@ export default function ImportView({ importTxs, setView }) {
     setTimeout(() => { setDone(false); setView('dashboard'); }, 2000);
   };
 
+  const loadMay2026 = async () => {
+    setSeeding(true);
+    await importTxs(MAY_2026.map((r, i) => ({ ...r, id: Date.now() + i })));
+    setDone(true);
+    setTimeout(() => { setDone(false); setView('dashboard'); }, 2000);
+  };
+
   return (
     <div style={{ maxWidth: 720 }}>
       <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 20 }}>Import CSV</div>
 
       {!preview && !done && (
         <>
+          <Card style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>May 2026 — historical data</div>
+              <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>37 transactions · £1,724.46 expenses · £23.74 income</div>
+            </div>
+            <button onClick={loadMay2026} disabled={seeding} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px',
+              borderRadius: 10, border: 'none', background: C.primary, color: '#FFF',
+              fontWeight: 600, fontSize: 14, cursor: seeding ? 'default' : 'pointer',
+              fontFamily: "'Outfit', sans-serif", opacity: seeding ? 0.6 : 1, flexShrink: 0,
+            }}>
+              <Database size={15} />{seeding ? 'Importing…' : 'Import May 2026'}
+            </button>
+          </Card>
+
           <Card style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>Expected format</div>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Expected CSV format</div>
             <pre style={{
               fontFamily: 'monospace', fontSize: 12, background: C.bg,
               padding: 12, borderRadius: 8, color: C.text, overflowX: 'auto',
