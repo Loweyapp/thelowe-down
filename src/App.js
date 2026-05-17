@@ -64,6 +64,23 @@ export default function App() {
         DEFAULT_CATS.forEach(cat => batch.set(doc(catRef), cat));
         await batch.commit();
       } else {
+        const existingMap = {};
+        snap.docs.forEach(d => { existingMap[d.data().name] = { id: d.id, ...d.data() }; });
+        const batch = writeBatch(db);
+        let changes = false;
+        DEFAULT_CATS.forEach(def => {
+          if (!existingMap[def.name]) {
+            batch.set(doc(catRef), def);
+            changes = true;
+          } else {
+            const cur = existingMap[def.name];
+            if (cur.icon !== def.icon || cur.color !== def.color) {
+              batch.update(doc(catRef, cur.id), { icon: def.icon, color: def.color });
+              changes = true;
+            }
+          }
+        });
+        if (changes) await batch.commit();
         setCats(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
     });
