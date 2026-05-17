@@ -3,6 +3,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { C, ACCOUNTS, gbp, mkKey, mkLabel, todayStr } from '../constants.js';
 import { NavBtn, TxRow, EmptyState } from '../components/UI.js';
 
+const fmtDay = date =>
+  new Date(date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+
 export default function TransactionsView({ txs, cats, deleteTx }) {
   const months = [...new Set(txs.map(t => mkKey(t.date)))].sort().reverse();
   const [idx,     setIdx]    = useState(0);
@@ -13,12 +16,7 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
     if (document.getElementById('tx-anim-style')) return;
     const s = document.createElement('style');
     s.id = 'tx-anim-style';
-    s.textContent = `
-      @keyframes txFadeIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
-    `;
+    s.textContent = '@keyframes txIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}';
     document.head.appendChild(s);
   }, []);
 
@@ -28,10 +26,10 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
     .filter(t => mkKey(t.date) === sel)
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const income  = mTxs.filter(t => t.type === 'income').reduce((s, t) => s + Math.abs(t.amount), 0);
+  const income  = mTxs.filter(t => t.type === 'income').reduce((s, t)  => s + Math.abs(t.amount), 0);
   const expense = mTxs.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
 
-  // Build date groups (newest first)
+  // Date groups
   const dateKeys = [];
   const dateMap  = {};
   mTxs.forEach(t => {
@@ -39,8 +37,8 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
     dateMap[t.date].push(t);
   });
 
-  // Build category groups (expenses only, sorted by total desc; income at end)
-  const catMap  = {};
+  // Category groups (expenses only, sorted by total desc)
+  const catMap = {};
   mTxs.filter(t => t.type === 'expense').forEach(t => {
     catMap[t.category] = catMap[t.category] || [];
     catMap[t.category].push(t);
@@ -51,22 +49,18 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
   );
   const incomeItems = mTxs.filter(t => t.type !== 'expense');
 
-  const fmtDay = date => new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {
-    weekday: 'short', day: 'numeric', month: 'short',
+  const pillStyle = active => ({
+    padding: '6px 16px', borderRadius: 20, cursor: 'pointer',
+    background: active ? C.primary : C.card, color: active ? '#FFF' : C.muted,
+    fontWeight: 600, fontSize: 13, fontFamily: "'Outfit', sans-serif",
+    border: `1px solid ${active ? C.primary : C.border}`,
+    transition: 'background 0.15s, color 0.15s',
   });
 
-  const GroupHeader = ({ left, right, color }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 2px', marginBottom: 4 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: color || C.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{left}</div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{right}</div>
-    </div>
-  );
-
-  const TxCard = ({ children }) => (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '0 14px', marginBottom: 10 }}>
-      {children}
-    </div>
-  );
+  const cardStyle = {
+    background: C.card, border: `1px solid ${C.border}`,
+    borderRadius: 14, padding: '0 14px', marginBottom: 10,
+  };
 
   return (
     <div style={{ maxWidth: 720 }}>
@@ -74,14 +68,7 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
       {/* Account filter */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         {['All', ...ACCOUNTS].map(a => (
-          <button key={a} onClick={() => setAccount(a)} style={{
-            padding: '6px 16px', borderRadius: 20, cursor: 'pointer',
-            background: account === a ? C.primary : C.card,
-            color:      account === a ? '#FFF' : C.muted,
-            fontWeight: 600, fontSize: 13, fontFamily: "'Outfit', sans-serif",
-            border: `1px solid ${account === a ? C.primary : C.border}`,
-            transition: 'background 0.15s, color 0.15s',
-          }}>{a}</button>
+          <button key={a} onClick={() => setAccount(a)} style={pillStyle(account === a)}>{a}</button>
         ))}
       </div>
 
@@ -122,20 +109,22 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
       </div>
 
       {/* Empty state */}
-      {mTxs.length === 0 && (
-        <EmptyState height={160} message="No transactions for this month" />
-      )}
+      {mTxs.length === 0 && <EmptyState height={160} message="No transactions for this month" />}
 
       {/* By Date */}
       {mTxs.length > 0 && groupBy === 'date' && dateKeys.map((date, gi) => (
-        <div key={date} style={{ animation: `txFadeIn 0.18s ease ${gi * 0.04}s both` }}>
-          <GroupHeader
-            left={fmtDay(date)}
-            right={gbp(dateMap[date].filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0))}
-          />
-          <TxCard>
+        <div key={date} style={{ animation: `txIn 0.18s ease ${gi * 0.04}s both` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px', marginBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {fmtDay(date)}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>
+              {gbp(dateMap[date].filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0))}
+            </div>
+          </div>
+          <div style={cardStyle}>
             {dateMap[date].map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} cats={cats} />)}
-          </TxCard>
+          </div>
         </div>
       ))}
 
@@ -146,30 +135,31 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
             const total  = catMap[cat].reduce((s, t) => s + Math.abs(t.amount), 0);
             const catDef = cats.find(c => c.name === cat);
             return (
-              <div key={cat} style={{ animation: `txFadeIn 0.18s ease ${gi * 0.04}s both` }}>
+              <div key={cat} style={{ animation: `txIn 0.18s ease ${gi * 0.04}s both` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 2px', marginBottom: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: catDef?.color || C.muted, flexShrink: 0 }} />
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: catDef?.color || C.muted }} />
                     <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{cat}</div>
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: C.expense }}>{gbp(total)}</div>
                 </div>
-                <TxCard>
+                <div style={cardStyle}>
                   {catMap[cat].map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} cats={cats} />)}
-                </TxCard>
+                </div>
               </div>
             );
           })}
           {incomeItems.length > 0 && (
-            <div style={{ animation: `txFadeIn 0.18s ease ${catKeys.length * 0.04}s both` }}>
-              <GroupHeader
-                left="Income"
-                right={gbp(incomeItems.reduce((s, t) => s + Math.abs(t.amount), 0))}
-                color={C.income}
-              />
-              <TxCard>
+            <div style={{ animation: `txIn 0.18s ease ${catKeys.length * 0.04}s both` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px', marginBottom: 4 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.income, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Income</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.income }}>
+                  {gbp(incomeItems.reduce((s, t) => s + Math.abs(t.amount), 0))}
+                </div>
+              </div>
+              <div style={cardStyle}>
                 {incomeItems.map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} cats={cats} />)}
-              </TxCard>
+              </div>
             </div>
           )}
         </>
