@@ -12,11 +12,12 @@ import Papa from 'papaparse';
 import { DEFAULT_CATS, NAV } from './constants.js';
 import { LoginScreen, LoadingScreen } from './components/Auth.js';
 import { Sidebar, TopHeader, BottomNav } from './components/Navigation.js';
-import DashboardView  from './views/DashboardView.js';
-import SummaryView    from './views/SummaryView.js';
-import CategoriesView from './views/CategoriesView.js';
-import AddView        from './views/AddView.js';
-import ImportView     from './views/ImportView.js';
+import DashboardView     from './views/DashboardView.js';
+import TransactionsView  from './views/TransactionsView.js';
+import SummaryView       from './views/SummaryView.js';
+import CategoriesView    from './views/CategoriesView.js';
+import AddView           from './views/AddView.js';
+import ImportView        from './views/ImportView.js';
 
 function useBreakpoint() {
   const [mobile, setMobile] = useState(window.innerWidth < 768);
@@ -126,7 +127,7 @@ export default function App() {
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
   const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, importTxs, exportCSV, setView, mobile };
-  const VIEWS  = { dashboard: DashboardView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView };
+  const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView };
   const View   = VIEWS[view] || DashboardView;
 
   return (
