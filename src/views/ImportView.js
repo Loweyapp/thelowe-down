@@ -436,12 +436,11 @@ const HISTORY = [
 ];
 
 export default function ImportView({ importTxs, setView, txs }) {
-  const [dragOver,      setDragOver]      = useState(false);
-  const [preview,       setPreview]       = useState(null);
-  const [error,         setError]         = useState('');
-  const [done,          setDone]          = useState(false);
-  const [loading,       setLoading]       = useState(null);
-  const [confirmLabel,  setConfirmLabel]  = useState(null);
+  const [dragOver,  setDragOver]  = useState(false);
+  const [preview,   setPreview]   = useState(null);
+  const [error,     setError]     = useState('');
+  const [done,      setDone]      = useState(false);
+  const [loading,   setLoading]   = useState(null);
   const fileRef = useRef();
 
   const parse = file => {
@@ -466,28 +465,23 @@ export default function ImportView({ importTxs, setView, txs }) {
     });
   };
 
-  const confirm = () => {
-    importTxs(preview);
+  const confirm = async () => {
+    await importTxs(preview);
     setPreview(null);
     setDone(true);
     setTimeout(() => { setDone(false); setView('dashboard'); }, 2000);
   };
 
-  const monthAlreadyImported = label => {
+  const monthImported = label => {
     const entry = HISTORY.find(h => h.label === label);
     if (!entry?.data?.length) return false;
     const monthKey = entry.data[0].date.slice(0, 7);
     return txs.some(t => t.date?.startsWith(monthKey));
   };
 
-  const loadHistory = async (label, force = false) => {
+  const loadHistory = async label => {
     const entry = HISTORY.find(h => h.label === label);
     if (!entry) return;
-    if (!force && monthAlreadyImported(label)) {
-      setConfirmLabel(label);
-      return;
-    }
-    setConfirmLabel(null);
     setLoading(label);
     await importTxs(entry.data.map((r, i) => ({ ...r, id: Date.now() + i })));
     setLoading(null);
@@ -501,64 +495,34 @@ export default function ImportView({ importTxs, setView, txs }) {
 
       {!preview && !done && (
         <>
-          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 10, color: C.muted }}>Historical data</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-            {HISTORY.map(h => {
-              const alreadyDone = monthAlreadyImported(h.label);
-              const confirming  = confirmLabel === h.label;
-              return (
-                <Card key={h.label} style={{ padding: '14px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {(() => {
+            const pending = HISTORY.filter(h => !monthImported(h.label));
+            if (!pending.length) return null;
+            return (
+              <>
+                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 10, color: C.muted }}>Historical data</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                  {pending.map(h => (
+                    <Card key={h.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', padding: '14px 20px' }}>
+                      <div>
                         <div style={{ fontWeight: 600, fontSize: 15 }}>{h.label}</div>
-                        {alreadyDone && !confirming && (
-                          <span style={{
-                            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
-                            background: '#F0FDF4', color: C.income,
-                          }}>Imported</span>
-                        )}
+                        <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{h.sub}</div>
                       </div>
-                      <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{h.sub}</div>
-                    </div>
-                    {!confirming && (
                       <button onClick={() => loadHistory(h.label)} disabled={!!loading} style={{
                         padding: '8px 18px', borderRadius: 10, border: 'none',
-                        background: loading === h.label ? C.muted : alreadyDone ? C.border : C.primary,
-                        color: alreadyDone ? C.text : '#FFF',
-                        fontWeight: 600, fontSize: 13, cursor: loading ? 'default' : 'pointer',
+                        background: loading === h.label ? C.muted : C.primary,
+                        color: '#FFF', fontWeight: 600, fontSize: 13,
+                        cursor: loading ? 'default' : 'pointer',
                         fontFamily: "'Outfit', sans-serif", flexShrink: 0,
                       }}>
-                        {loading === h.label ? 'Importing…' : alreadyDone ? 'Re-import' : 'Import'}
+                        {loading === h.label ? 'Importing…' : 'Import'}
                       </button>
-                    )}
-                  </div>
-                  {confirming && (
-                    <div style={{
-                      marginTop: 12, padding: '10px 14px', borderRadius: 10,
-                      background: '#FEF2F2', border: `1px solid #FECACA`,
-                    }}>
-                      <div style={{ fontSize: 13, color: C.expense, fontWeight: 600, marginBottom: 8 }}>
-                        This month is already imported — doing it again will create duplicates.
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => setConfirmLabel(null)} style={{
-                          padding: '6px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
-                          background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                          fontFamily: "'Outfit', sans-serif",
-                        }}>Cancel</button>
-                        <button onClick={() => loadHistory(h.label, true)} style={{
-                          padding: '6px 14px', borderRadius: 8, border: 'none',
-                          background: C.expense, color: '#FFF', cursor: 'pointer',
-                          fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif",
-                        }}>Import anyway</button>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
 
           <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 10, color: C.muted }}>Import from CSV</div>
           <Card style={{ marginBottom: 16 }}>
@@ -614,18 +578,32 @@ export default function ImportView({ importTxs, setView, txs }) {
 
       {preview && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ fontWeight: 600, fontSize: 16 }}>
-              Preview — {preview.length} transaction{preview.length !== 1 ? 's' : ''}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setPreview(null)} style={{
-                padding: '8px 16px', borderRadius: 10, border: `1px solid ${C.border}`,
-                background: 'transparent', cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
-              }}>Cancel</button>
-              <Btn onClick={confirm} primary>Import All</Btn>
-            </div>
-          </div>
+          {(() => {
+            const existingKeys = new Set(txs.map(t => `${t.date}|${t.description}|${t.amount}`));
+            const dupeCount = preview.filter(r => existingKeys.has(`${r.date}|${r.description}|${r.amount}`)).length;
+            const newCount  = preview.length - dupeCount;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 16 }}>
+                    Preview — {preview.length} row{preview.length !== 1 ? 's' : ''}
+                  </div>
+                  {dupeCount > 0 && (
+                    <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>
+                      {newCount} new · {dupeCount} duplicate{dupeCount !== 1 ? 's' : ''} will be skipped
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setPreview(null)} style={{
+                    padding: '8px 16px', borderRadius: 10, border: `1px solid ${C.border}`,
+                    background: 'transparent', cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                  }}>Cancel</button>
+                  <Btn onClick={confirm} primary>{newCount > 0 ? `Import ${newCount} new` : 'Nothing new'}</Btn>
+                </div>
+              </div>
+            );
+          })()}
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
