@@ -102,11 +102,15 @@ export default function App() {
   };
 
   const importTxs = async rows => {
+    const existingKeys = new Set(txs.map(t => `${t.date}|${t.description}|${t.amount}`));
+    const fresh = rows.filter(r => !existingKeys.has(`${r.date}|${r.description}|${r.amount}`));
+    if (!fresh.length) return 0;
     const batch = writeBatch(db);
-    rows.forEach(({ id, ...data }) => {
+    fresh.forEach(({ id, ...data }) => {
       batch.set(doc(collection(db, 'users', user.uid, 'transactions')), data);
     });
     await batch.commit();
+    return fresh.length;
   };
 
   const exportCSV = () => {
