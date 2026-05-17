@@ -23,6 +23,7 @@ export default function ImportView({ importTxs, setView }) {
           category:    r.category?.trim()    || 'Other',
           amount:      parseFloat(r.amount)  || 0,
           type:        r.type?.trim()        || 'expense',
+          account:     r.account?.trim()     || 'Alex',
         })).filter(r => r.description && r.amount !== 0);
         if (!rows.length) { setError('No valid rows found. Check your CSV format.'); return; }
         setPreview(rows);
@@ -51,9 +52,9 @@ export default function ImportView({ importTxs, setView }) {
               fontFamily: 'monospace', fontSize: 12, background: C.bg,
               padding: 12, borderRadius: 8, color: C.text, overflowX: 'auto',
             }}>
-{`date, description, category, amount, type
-2026-01-15, Tesco, Food & Drink, -45.20, expense
-2026-01-01, Salary, Income, 3500, income`}
+{`date, description, category, amount, type, account
+2026-01-15, Tesco, Groceries, -45.20, expense, Alex
+2026-01-01, Vinted earnings, Income, 23.74, income, Kelly`}
             </pre>
           </Card>
 
@@ -115,7 +116,7 @@ export default function ImportView({ importTxs, setView }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: C.bg }}>
-                    {['Date', 'Description', 'Category', 'Amount', 'Type'].map(h => (
+                    {['Date', 'Description', 'Category', 'Amount', 'Type', 'Account'].map(h => (
                       <th key={h} style={{
                         padding: '10px 12px', textAlign: 'left', fontWeight: 600,
                         color: C.muted, borderBottom: `1px solid ${C.border}`,
@@ -139,6 +140,7 @@ export default function ImportView({ importTxs, setView }) {
                           color:       TYPE_COLOR[r.type] || '#6B7280',
                         }}>{r.type}</span>
                       </td>
+                      <td style={{ padding: '10px 12px', color: C.muted }}>{r.account || 'Alex'}</td>
                     </tr>
                   ))}
                 </tbody>
