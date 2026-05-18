@@ -42,8 +42,14 @@ export default function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }
     .sort((a, b) => b.value - a.value)
     .slice(0, 8);
 
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Dashboard</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{today}</div>
+      </div>
       <div style={{ display: 'flex', gap: 6 }}>
         {['All', ...ACCOUNTS].map(a => (
           <button key={a} onClick={() => setAccount(a)} style={{
