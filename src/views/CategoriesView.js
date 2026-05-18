@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Check, X, Pencil } from 'lucide-react';
-import { C, COLOR_OPTS, ICON_MAP, ICON_OPTS, gbp } from '../constants.js';
+import { C, COLOR_OPTS, ICON_MAP, ICON_OPTS, gbp, getBudgetForMonth, mkKey, todayStr } from '../constants.js';
 import { Card, Btn, Field } from '../components/UI.js';
 
 const inp = {
@@ -56,16 +56,20 @@ export default function CategoriesView({ cats, addCat, deleteCat, updateCat }) {
     setAddOpen(false);
   };
 
+  const thisMonth = mkKey(todayStr());
+
   const startEdit = cat => {
     setEditId(cat.id);
-    setEditForm({ icon: cat.icon, color: cat.color, budget: cat.budget ?? '' });
+    setEditForm({ icon: cat.icon, color: cat.color, budget: getBudgetForMonth(cat, thisMonth) });
   };
 
   const saveEdit = cat => {
+    const amount = parseFloat(editForm.budget) || 0;
     updateCat(cat.id, {
-      icon:   editForm.icon,
-      color:  editForm.color,
-      budget: parseFloat(editForm.budget) || 0,
+      icon:    editForm.icon,
+      color:   editForm.color,
+      budget:  amount,
+      budgets: { ...(cat.budgets || {}), [thisMonth]: amount },
     });
     setEditId(null);
   };
@@ -135,7 +139,7 @@ export default function CategoriesView({ cats, addCat, deleteCat, updateCat }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{cat.name}</div>
                   {!editing && (
-                    <div style={{ fontSize: 12, color: C.muted }}>Budget: {gbp(cat.budget ?? 0)} / month</div>
+                    <div style={{ fontSize: 12, color: C.muted }}>Budget: {gbp(getBudgetForMonth(cat, thisMonth))} / month</div>
                   )}
                 </div>
                 {!editing && (
