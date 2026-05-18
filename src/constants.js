@@ -6,7 +6,7 @@ import {
   Banknote, PiggyBank, TrendingUp,
 } from 'lucide-react';
 
-export const VERSION = 'v1.3.4';
+export const VERSION = 'v1.3.5';
 
 export const C = {
   primary:    '#0ABFA3',
@@ -94,6 +94,13 @@ export const RANGES = [
 ];
 
 export const gbp      = n => `£${Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const getBudgetForMonth = (cat, monthKey) => {
+  const map = cat.budgets;
+  if (!map) return cat.budget ?? 0;
+  if (map[monthKey] !== undefined) return map[monthKey];
+  const prior = Object.keys(map).filter(k => k <= monthKey).sort().reverse()[0];
+  return prior !== undefined ? map[prior] : (cat.budget ?? 0);
+};
 export const mkKey    = d => d.slice(0, 7);
 export const todayStr = () => new Date().toISOString().slice(0, 10);
 export const mkLabel  = k => {
