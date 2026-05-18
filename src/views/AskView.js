@@ -1,11 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Sparkles, Key, X } from 'lucide-react';
-import { C, gbp, getBudgetForMonth, mkKey, mkLabel, todayStr } from '../constants.js';
-
-const API_KEY_STORAGE = 'tld_anthropic_key';
+import { C, getBudgetForMonth, mkKey, mkLabel, todayStr } from '../constants.js';
 
 function buildContext(txs, cats) {
-  const now = todayStr();
+  const now    = todayStr();
   const cutoff = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10);
   const recent = txs.filter(t => t.date >= cutoff);
 
@@ -14,9 +12,8 @@ function buildContext(txs, cats) {
     const m = t.date.slice(0, 7);
     if (!months[m]) months[m] = { income: 0, expense: 0, saving: 0, investment: 0, cats: {} };
     months[m][t.type] = (months[m][t.type] || 0) + Math.abs(t.amount);
-    if (t.type === 'expense') {
+    if (t.type === 'expense')
       months[m].cats[t.category] = (months[m].cats[t.category] || 0) + Math.abs(t.amount);
-    }
   });
 
   const monthlySummary = Object.entries(months)
@@ -30,24 +27,14 @@ function buildContext(txs, cats) {
     })
     .join('\n');
 
-  const thisMonth = mkKey(now);
-  const budgetLines = cats
-    .map(c => `${c.name}: £${getBudgetForMonth(c, thisMonth).toFixed(2)}/mo`)
-    .join(', ');
+  const thisMonth  = mkKey(now);
+  const budgetLines = cats.map(c => `${c.name}: £${getBudgetForMonth(c, thisMonth).toFixed(2)}/mo`).join(', ');
 
   const recentTxLines = txs.slice(0, 30)
     .map(t => `${t.date} ${t.type} ${t.category || ''} £${Math.abs(t.amount).toFixed(2)} "${t.description}"${t.account ? ` (${t.account})` : ''}`)
     .join('\n');
 
-  return `Today: ${now}
-
-Monthly budgets: ${budgetLines}
-
-6-month summary:
-${monthlySummary || 'No transactions yet.'}
-
-Recent transactions (newest first):
-${recentTxLines || 'None.'}`;
+  return `Today: ${now}\n\nMonthly budgets: ${budgetLines}\n\n6-month summary:\n${monthlySummary || 'No transactions yet.'}\n\nRecent transactions (newest first):\n${recentTxLines || 'None.'}`;
 }
 
 const SUGGESTIONS = [
@@ -57,12 +44,11 @@ const SUGGESTIONS = [
   'What were my biggest expenses recently?',
 ];
 
-export default function AskView({ txs, cats }) {
+export default function AskView({ txs, cats, anthropicKey, saveAnthropicKey }) {
   const [messages,     setMessages]     = useState([]);
   const [input,        setInput]        = useState('');
   const [loading,      setLoading]      = useState(false);
   const [listening,    setListening]    = useState(false);
-  const [apiKey,       setApiKey]       = useState(() => localStorage.getItem(API_KEY_STORAGE) || '');
   const [showKeyPanel, setShowKeyPanel] = useState(false);
   const [keyDraft,     setKeyDraft]     = useState('');
   const bottomRef = useRef(null);
@@ -76,25 +62,19 @@ export default function AskView({ txs, cats }) {
   const send = async text => {
     const q = text.trim();
     if (!q || loading) return;
-    if (!apiKey) { setShowKeyPanel(true); return; }
+    if (!anthropicKey) { setShowKeyPanel(true); return; }
 
-    const userMsg = { role: 'user', text: q };
-    const history = [...messages, userMsg];
+    const history = [...messages, { role: 'user', text: q }];
     setMessages(history);
     setInput('');
     setLoading(true);
-
-    const apiMessages = history.slice(-10).map(m => ({
-      role:    m.role === 'user' ? 'user' : 'assistant',
-      content: m.text,
-    }));
 
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          'x-api-key': anthropicKey,
           'anthropic-version': '2023-06-01',
           'anthropic-dangerous-direct-browser-access': 'true',
         },
@@ -102,13 +82,12 @@ export default function AskView({ txs, cats }) {
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 1024,
           system: `You are a personal finance assistant for The LoweDown app. Answer questions concisely using the data provided. Use £ for currency. Be specific with numbers. If asked about something not in the data, say so.\n\n${buildContext(txs, cats)}`,
-          messages: apiMessages,
+          messages: history.slice(-10).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
         }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
-      const answer = data.content?.[0]?.text || 'No response received.';
-      setMessages(m => [...m, { role: 'assistant', text: answer }]);
+      setMessages(m => [...m, { role: 'assistant', text: data.content?.[0]?.text || 'No response received.' }]);
     } catch (err) {
       setMessages(m => [...m, { role: 'assistant', text: `Sorry, I couldn't get a response. ${err.message || 'Check your API key.'}` }]);
     }
@@ -132,8 +111,7 @@ export default function AskView({ txs, cats }) {
 
   const saveKey = () => {
     if (!keyDraft.trim()) return;
-    localStorage.setItem(API_KEY_STORAGE, keyDraft.trim());
-    setApiKey(keyDraft.trim());
+    saveAnthropicKey(keyDraft.trim());
     setShowKeyPanel(false);
     setKeyDraft('');
     inputRef.current?.focus();
@@ -153,13 +131,13 @@ export default function AskView({ txs, cats }) {
           </div>
           <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Ask questions about your finances</div>
         </div>
-        <button onClick={() => { setShowKeyPanel(p => !p); setKeyDraft(apiKey); }} style={{
+        <button onClick={() => { setShowKeyPanel(p => !p); setKeyDraft(anthropicKey); }} style={{
           display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
           borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent',
-          cursor: 'pointer', color: apiKey ? C.primary : C.muted, fontSize: 12,
+          cursor: 'pointer', color: anthropicKey ? C.primary : C.muted, fontSize: 12,
           fontFamily: "'Outfit', sans-serif",
         }}>
-          <Key size={13} />{apiKey ? 'API key set' : 'Set API key'}
+          <Key size={13} />{anthropicKey ? 'API key set' : 'Set API key'}
         </button>
       </div>
 
@@ -195,18 +173,14 @@ export default function AskView({ txs, cats }) {
             }}>Save</button>
           </div>
           <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>
-            Stored in browser only. Get a key at console.anthropic.com.
+            Saved to your account — works on all devices automatically.
           </div>
         </div>
       )}
 
       {/* Messages */}
-      <div style={{
-        flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12,
-        paddingBottom: 8, minHeight: 0,
-      }}>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 8, minHeight: 0 }}>
 
-        {/* Empty state with suggestions */}
         {messages.length === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
             <div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>Try asking:</div>
@@ -215,7 +189,6 @@ export default function AskView({ txs, cats }) {
                 textAlign: 'left', padding: '10px 14px', borderRadius: 10,
                 border: `1px solid ${C.border}`, background: C.card, cursor: 'pointer',
                 fontSize: 13, color: C.text, fontFamily: "'Outfit', sans-serif",
-                transition: 'border-color 0.12s',
               }}
               onMouseEnter={e => e.currentTarget.style.borderColor = C.primary}
               onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
@@ -225,28 +198,22 @@ export default function AskView({ txs, cats }) {
           </div>
         )}
 
-        {/* Message bubbles */}
         {messages.map((msg, i) => (
-          <div key={i} style={{
-            display: 'flex',
-            justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-          }}>
+          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
             <div style={{
               maxWidth: '85%', padding: '10px 14px', borderRadius: 14,
               background: msg.role === 'user' ? C.primary : C.card,
-              color:      msg.role === 'user' ? '#FFF' : C.text,
-              border:     msg.role === 'user' ? 'none' : `1px solid ${C.border}`,
-              fontSize: 14, lineHeight: 1.55,
+              color:      msg.role === 'user' ? '#FFF'    : C.text,
+              border:     msg.role === 'user' ? 'none'    : `1px solid ${C.border}`,
+              fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap',
               borderBottomRightRadius: msg.role === 'user' ? 4 : 14,
               borderBottomLeftRadius:  msg.role === 'user' ? 14 : 4,
-              whiteSpace: 'pre-wrap',
             }}>
               {msg.text}
             </div>
           </div>
         ))}
 
-        {/* Loading indicator */}
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
             <div style={{
@@ -268,10 +235,7 @@ export default function AskView({ txs, cats }) {
       </div>
 
       {/* Input bar */}
-      <div style={{
-        display: 'flex', gap: 8, paddingTop: 12, flexShrink: 0,
-        borderTop: `1px solid ${C.border}`,
-      }}>
+      <div style={{ display: 'flex', gap: 8, paddingTop: 12, flexShrink: 0, borderTop: `1px solid ${C.border}` }}>
         <input
           ref={inputRef}
           value={input}
@@ -291,8 +255,7 @@ export default function AskView({ txs, cats }) {
             width: 44, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer',
             background: listening ? '#FEF2F2' : C.bg,
             color:      listening ? C.expense  : C.muted,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
             {listening ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
