@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { C, ACCOUNTS, gbp, mkKey, mkLabel, todayStr } from '../constants.js';
+import { C, ACCOUNTS, gbp, getBudgetForMonth, mkKey, mkLabel, todayStr } from '../constants.js';
 import { Card, EmptyState, NavBtn } from '../components/UI.js';
 
 export default function SummaryView({ txs, cats }) {
@@ -22,7 +22,7 @@ export default function SummaryView({ txs, cats }) {
     .map(cat => ({
       name:   cat.name,
       color:  cat.color,
-      budget: cat.budget,
+      budget: getBudgetForMonth(cat, sel),
       actual: mTxs.filter(t => t.category === cat.name && t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0),
     }))
     .filter(d => d.budget > 0 || d.actual > 0);
