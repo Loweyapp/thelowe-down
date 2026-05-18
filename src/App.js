@@ -52,8 +52,8 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    const txRef  = collection(db, 'users', user.uid, 'transactions');
-    const catRef = collection(db, 'users', user.uid, 'categories');
+    const txRef  = collection(db, 'family', 'lowe', 'transactions');
+    const catRef = collection(db, 'family', 'lowe', 'categories');
 
     const unsubTx = onSnapshot(
       query(txRef, orderBy('date', 'desc')),
@@ -116,24 +116,24 @@ export default function App() {
 
   const addTx = async tx => {
     const { id, ...data } = tx;
-    await addDoc(collection(db, 'users', user.uid, 'transactions'), data);
+    await addDoc(collection(db, 'family', 'lowe', 'transactions'), data);
   };
 
   const deleteTx = async id => {
-    await deleteDoc(doc(db, 'users', user.uid, 'transactions', String(id)));
+    await deleteDoc(doc(db, 'family', 'lowe', 'transactions', String(id)));
   };
 
   const addCat = async cat => {
     const { id, ...data } = cat;
-    await addDoc(collection(db, 'users', user.uid, 'categories'), data);
+    await addDoc(collection(db, 'family', 'lowe', 'categories'), data);
   };
 
   const deleteCat = async id => {
-    await deleteDoc(doc(db, 'users', user.uid, 'categories', String(id)));
+    await deleteDoc(doc(db, 'family', 'lowe', 'categories', String(id)));
   };
 
   const updateCat = async (id, updates) => {
-    await updateDoc(doc(db, 'users', user.uid, 'categories', String(id)), updates);
+    await updateDoc(doc(db, 'family', 'lowe', 'categories', String(id)), updates);
   };
 
   const importTxs = async rows => {
@@ -142,7 +142,7 @@ export default function App() {
     if (!fresh.length) return 0;
     const batch = writeBatch(db);
     fresh.forEach(({ id, ...data }) => {
-      batch.set(doc(collection(db, 'users', user.uid, 'transactions')), data);
+      batch.set(doc(collection(db, 'family', 'lowe', 'transactions')), data);
     });
     await batch.commit();
     return fresh.length;
