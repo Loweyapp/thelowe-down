@@ -18,6 +18,7 @@ import SummaryView       from './views/SummaryView.js';
 import CategoriesView    from './views/CategoriesView.js';
 import AddView           from './views/AddView.js';
 import ImportView        from './views/ImportView.js';
+import AskView           from './views/AskView.js';
 
 function useBreakpoint() {
   const [mobile, setMobile] = useState(window.innerWidth < 768);
@@ -148,7 +149,7 @@ export default function App() {
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
   const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile };
-  const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView };
+  const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView, ask: AskView };
   const View   = VIEWS[view] || DashboardView;
 
   return (
