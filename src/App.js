@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase.js';
 import {
-  collection, doc, addDoc, deleteDoc,
+  collection, doc, addDoc, deleteDoc, updateDoc,
   onSnapshot, query, orderBy, writeBatch,
 } from 'firebase/firestore';
 import {
@@ -119,6 +119,10 @@ export default function App() {
     await deleteDoc(doc(db, 'users', user.uid, 'categories', String(id)));
   };
 
+  const updateCat = async (id, updates) => {
+    await updateDoc(doc(db, 'users', user.uid, 'categories', String(id)), updates);
+  };
+
   const importTxs = async rows => {
     const existingKeys = new Set(txs.map(t => `${t.date}|${t.description}|${t.amount}`));
     const fresh = rows.filter(r => !existingKeys.has(`${r.date}|${r.description}|${r.amount}`));
@@ -143,7 +147,7 @@ export default function App() {
   if (authLoading) return <LoadingScreen />;
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
-  const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, importTxs, exportCSV, setView, mobile };
+  const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile };
   const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView };
   const View   = VIEWS[view] || DashboardView;
 
