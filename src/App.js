@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase.js';
 import {
-  collection, doc, addDoc, deleteDoc, updateDoc,
+  collection, doc, addDoc, deleteDoc, updateDoc, setDoc, getDoc,
   onSnapshot, query, orderBy, writeBatch,
 } from 'firebase/firestore';
 import {
@@ -36,6 +36,7 @@ export default function App() {
   const [view,        setView]        = useState('dashboard');
   const [txs,         setTxs]         = useState([]);
   const [cats,        setCats]        = useState([]);
+  const [anthropicKey, setAnthropicKey] = useState('');
   const mobile = useBreakpoint();
 
   useEffect(() => {
@@ -86,8 +87,19 @@ export default function App() {
       }
     });
 
+    const settingsRef = doc(db, 'users', user.uid, 'settings', 'config');
+    getDoc(settingsRef).then(snap => {
+      if (snap.exists()) setAnthropicKey(snap.data().anthropicKey || '');
+    });
+
     return () => { unsubTx(); unsubCat(); };
   }, [user]);
+
+  const saveAnthropicKey = async key => {
+    const settingsRef = doc(db, 'users', user.uid, 'settings', 'config');
+    await setDoc(settingsRef, { anthropicKey: key }, { merge: true });
+    setAnthropicKey(key);
+  };
 
   const signIn = async () => {
     const provider = new GoogleAuthProvider();
@@ -148,7 +160,7 @@ export default function App() {
   if (authLoading) return <LoadingScreen />;
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
-  const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile };
+  const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey };
   const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView, ask: AskView };
   const View   = VIEWS[view] || DashboardView;
 
