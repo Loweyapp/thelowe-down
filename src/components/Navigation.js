@@ -65,7 +65,8 @@ export function Sidebar({ view, setView, exportCSV, user, signOut }) {
 export function TopHeader({ label, signOut }) {
   return (
     <div style={{
-      background: C.sidebar, padding: '14px 20px',
+      background: C.sidebar,
+      padding: '14px 20px', paddingTop: 'max(14px, calc(env(safe-area-inset-top) + 6px))',
       display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
     }}>
       <div style={{ fontSize: 17, fontWeight: 700, color: '#FFF' }}>
@@ -90,7 +91,7 @@ export function BottomNav({ view, setView }) {
       display: 'flex', background: C.card, borderTop: `1px solid ${C.border}`,
       flexShrink: 0, paddingBottom: 'env(safe-area-inset-bottom)',
     }}>
-      {NAV.filter(n => !n.mobileHide).map(({ id, label, Icon }) => {
+      {NAV.map(({ id, label, Icon }) => {
         const active = view === id;
         return (
           <button key={id} onClick={() => setView(id)} style={{
