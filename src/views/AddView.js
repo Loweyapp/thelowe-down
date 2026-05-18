@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Check } from 'lucide-react';
+import { Check, AlertTriangle } from 'lucide-react';
 import { C, TX_TYPES, ACCOUNTS, todayStr } from '../constants.js';
 import { Card, Field } from '../components/UI.js';
 
-export default function AddView({ addTx, cats }) {
+export default function AddView({ addTx, cats, txs }) {
   const [form, setForm] = useState({
     account: 'Alex', type: 'expense', date: todayStr(),
     description: '', category: '', amount: '',
   });
-  const [ok, setOk] = useState(false);
+  const [ok,   setOk]   = useState(false);
+  const [warn, setWarn] = useState(null); // { description, amount, date } of the existing match
 
   const getCats = type =>
     type === 'income'       ? [{ id: 'i', name: 'Income'      }]
@@ -21,6 +22,21 @@ export default function AddView({ addTx, cats }) {
     setForm(f => ({ ...f, category: c[0]?.name || '' }));
   }, [form.type]);
 
+  // Clear warning whenever the form changes
+  useEffect(() => { setWarn(null); }, [form.description, form.amount, form.date]);
+
+  const findDuplicate = () => {
+    const amt = parseFloat(form.amount);
+    if (!form.description.trim() || isNaN(amt) || amt <= 0) return null;
+    const month = form.date.slice(0, 7);
+    const desc  = form.description.trim().toLowerCase();
+    return (txs || []).find(t =>
+      t.description.toLowerCase() === desc &&
+      Math.abs(t.amount) === amt &&
+      t.date.slice(0, 7) === month
+    ) || null;
+  };
+
   const inp = {
     width: '100%', padding: '12px 14px', borderRadius: 10,
     border: `1px solid ${C.border}`, fontSize: 15,
@@ -28,9 +44,8 @@ export default function AddView({ addTx, cats }) {
     boxSizing: 'border-box', background: C.card,
   };
 
-  const submit = () => {
+  const doAdd = () => {
     const amt = parseFloat(form.amount);
-    if (!form.description.trim() || !form.category || isNaN(amt) || amt <= 0) return;
     addTx({
       id:          Date.now(),
       account:     form.account,
@@ -41,9 +56,18 @@ export default function AddView({ addTx, cats }) {
       type:        form.type,
     });
     setOk(true);
+    setWarn(null);
     const c = getCats(form.type);
     setForm(f => ({ ...f, date: todayStr(), description: '', amount: '', category: c[0]?.name || '' }));
     setTimeout(() => setOk(false), 2000);
+  };
+
+  const submit = () => {
+    const amt = parseFloat(form.amount);
+    if (!form.description.trim() || !form.category || isNaN(amt) || amt <= 0) return;
+    const dup = findDuplicate();
+    if (dup) { setWarn(dup); return; }
+    doAdd();
   };
 
   return (
@@ -107,6 +131,33 @@ export default function AddView({ addTx, cats }) {
               placeholder="0.00" min="0" step="0.01" style={inp} />
           </Field>
 
+          {warn && (
+            <div style={{
+              padding: '14px 16px', borderRadius: 10,
+              background: '#FFFBEB', border: `1px solid #F59E0B`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <AlertTriangle size={16} color="#F59E0B" />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>Possible duplicate</span>
+              </div>
+              <div style={{ fontSize: 13, color: '#92400E', marginBottom: 12 }}>
+                "{warn.description}" for £{Math.abs(warn.amount).toFixed(2)} already exists on {warn.date}.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setWarn(null)} style={{
+                  flex: 1, padding: '9px 0', borderRadius: 9, border: `1px solid #F59E0B`,
+                  background: 'transparent', color: '#92400E', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                }}>Cancel</button>
+                <button onClick={doAdd} style={{
+                  flex: 1, padding: '9px 0', borderRadius: 9, border: 'none',
+                  background: '#F59E0B', color: '#FFF', fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                }}>Add Anyway</button>
+              </div>
+            </div>
+          )}
+
           {ok && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px',
@@ -116,13 +167,14 @@ export default function AddView({ addTx, cats }) {
             </div>
           )}
 
-          <button onClick={submit} style={{
-            padding: 14, borderRadius: 12, border: 'none', background: C.primary,
-            color: '#FFF', fontSize: 16, fontWeight: 700, cursor: 'pointer',
-            fontFamily: "'Outfit', sans-serif",
-          }}>
-            Add Transaction
-          </button>
+          {!warn && (
+            <button onClick={submit} style={{
+              padding: 14, borderRadius: 12, border: 'none', background: C.primary,
+              color: '#FFF', fontSize: 16, fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'Outfit', sans-serif",
+            }}>Add Transaction</button>
+          )}
+
         </div>
       </Card>
     </div>
