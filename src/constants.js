@@ -1,12 +1,12 @@
 import {
-  LayoutDashboard, List, Tag, Plus, Upload, Receipt,
+  LayoutDashboard, List, Tag, Plus, Upload, Receipt, Sparkles,
   UtensilsCrossed, Car, ShoppingBag, Film, Heart, Zap, Smartphone, Package,
   Coffee, Bus, ShoppingCart, Music, Activity, Home, CreditCard,
   Plane, Dumbbell, GraduationCap, Gift, Gamepad2, Book, Leaf, Wine,
   Banknote, PiggyBank, TrendingUp,
 } from 'lucide-react';
 
-export const VERSION = 'v1.3.5';
+export const VERSION = 'v1.3.6';
 
 export const C = {
   primary:    '#0ABFA3',
@@ -35,6 +35,7 @@ export const NAV = [
   { id: 'summary',      label: 'Summary',      Icon: List },
   { id: 'categories',   label: 'Categories',   Icon: Tag },
   { id: 'add',          label: 'Add',          Icon: Plus },
+  { id: 'ask',          label: 'Ask',          Icon: Sparkles },
   { id: 'import',       label: 'Import',       Icon: Upload, mobileHide: true },
 ];
 
