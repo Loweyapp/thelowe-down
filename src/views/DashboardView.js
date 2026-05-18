@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight, Download,
+  TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight, Download, Upload,
 } from 'lucide-react';
 import {
   AreaChart, Area, PieChart, Pie, Cell,
@@ -9,7 +9,7 @@ import {
 import { C, RANGES, ACCOUNTS, gbp, mkKey, mkLabel } from '../constants.js';
 import { Card, StatCard, TxRow, EmptyState } from '../components/UI.js';
 
-export default function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }) {
+export default function DashboardView({ txs, cats, deleteTx, exportCSV, setView, mobile }) {
   const [rangeIdx, setRangeIdx] = useState(2);
   const [account,  setAccount]  = useState('All');
 
@@ -46,9 +46,21 @@ export default function DashboardView({ txs, cats, deleteTx, exportCSV, mobile }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Dashboard</div>
-        <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{today}</div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Dashboard</div>
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{today}</div>
+        </div>
+        {mobile && (
+          <button onClick={() => setView('import')} style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
+            borderRadius: 10, border: `1px solid ${C.border}`, background: C.card,
+            cursor: 'pointer', color: C.muted, fontSize: 13,
+            fontFamily: "'Outfit', sans-serif",
+          }}>
+            <Upload size={14} />Import
+          </button>
+        )}
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
         {['All', ...ACCOUNTS].map(a => (
