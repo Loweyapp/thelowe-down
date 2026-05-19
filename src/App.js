@@ -54,6 +54,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
+    setTxs([]);
     const txRef  = collection(db, 'family', 'lowe', txCollection);
     const catRef = collection(db, 'family', 'lowe', 'categories');
 
@@ -95,7 +96,7 @@ export default function App() {
     });
 
     return () => { unsubTx(); unsubCat(); };
-  }, [user]);
+  }, [user, txCollection]);
 
   const saveAnthropicKey = async key => {
     const settingsRef = doc(db, 'users', user.uid, 'settings', 'config');
