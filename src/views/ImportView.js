@@ -980,12 +980,13 @@ const HISTORY = [
   { label: 'May 2026',      sub: '37 transactions · £1,724.46 expenses · £23.74 income',     data: MAY_2026 },
 ];
 
-export default function ImportView({ importTxs, setView, txs }) {
-  const [dragOver,  setDragOver]  = useState(false);
-  const [preview,   setPreview]   = useState(null);
-  const [error,     setError]     = useState('');
-  const [done,      setDone]      = useState(false);
-  const [loading,   setLoading]   = useState(null);
+export default function ImportView({ importTxs, setView, txs, deleteTxsByBank }) {
+  const [dragOver,   setDragOver]  = useState(false);
+  const [preview,    setPreview]   = useState(null);
+  const [error,      setError]     = useState('');
+  const [done,       setDone]      = useState(false);
+  const [loading,    setLoading]   = useState(null);
+  const [bankDelete, setBankDelete] = useState('');
   const fileRef = useRef();
 
   const parse = file => {
@@ -1192,6 +1193,37 @@ export default function ImportView({ importTxs, setView, txs }) {
           </Card>
         </>
       )}
+      {/* TEMPORARY: cleanup tool — remove once n8n is stable */}
+      <Card style={{ border: `1px solid ${C.expense}`, marginTop: 8 }}>
+        <div style={{ fontWeight: 600, fontSize: 14, color: C.expense, marginBottom: 12 }}>
+          Danger Zone — Delete by Bank
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {['American Express', 'HSBC', 'Monzo'].map(bank => {
+            const count = txs.filter(t => t.bank === bank).length;
+            return (
+              <button key={bank} onClick={async () => {
+                if (!count) return;
+                if (!window.confirm(`Delete all ${count} ${bank} transactions? This cannot be undone.`)) return;
+                await deleteTxsByBank(bank);
+                setBankDelete(`Deleted ${count} ${bank} transactions`);
+              }} style={{
+                padding: '8px 14px', borderRadius: 8, cursor: count ? 'pointer' : 'default',
+                border: `1px solid ${count ? C.expense : C.border}`,
+                background: 'transparent',
+                color: count ? C.expense : C.muted,
+                fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', sans-serif",
+              }}>
+                {bank} ({count})
+              </button>
+            );
+          })}
+        </div>
+        {bankDelete && (
+          <div style={{ marginTop: 10, fontSize: 13, color: C.expense }}>{bankDelete}</div>
+        )}
+      </Card>
+
     </div>
   );
 }
