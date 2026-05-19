@@ -183,6 +183,15 @@ export default function App() {
       {!mobile && <Sidebar view={view} setView={setView} exportCSV={exportCSV} user={user} signOut={signOut} />}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         {mobile && <TopHeader label={NAV.find(n => n.id === view)?.label || ''} signOut={signOut} />}
+        {testMode && (
+          <div style={{
+            background: '#EF4444', color: '#FFF', textAlign: 'center',
+            fontSize: 12, fontWeight: 700, padding: '6px 12px', flexShrink: 0,
+            letterSpacing: '0.03em',
+          }}>
+            🧪 TEST MODE — writes go to transactions_test, not your real data
+          </div>
+        )}
         <div style={{ flex: 1, overflowY: 'auto', padding: mobile ? '16px 16px 8px' : '28px 32px' }}>
           <View {...shared} />
         </div>
