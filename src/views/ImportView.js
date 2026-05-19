@@ -980,7 +980,7 @@ const HISTORY = [
   { label: 'May 2026',      sub: '37 transactions · £1,724.46 expenses · £23.74 income',     data: MAY_2026 },
 ];
 
-export default function ImportView({ importTxs, setView, txs, deleteTxsByBank }) {
+export default function ImportView({ importTxs, setView, txs, deleteTxsByBank, testMode, setTestMode }) {
   const [dragOver,   setDragOver]  = useState(false);
   const [preview,    setPreview]   = useState(null);
   const [error,      setError]     = useState('');
@@ -1193,6 +1193,25 @@ export default function ImportView({ importTxs, setView, txs, deleteTxsByBank })
           </Card>
         </>
       )}
+      <Card style={{ border: `1px solid ${testMode ? C.expense : C.border}`, marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: testMode ? C.expense : C.text }}>
+              {testMode ? '🧪 Test Mode — writing to transactions_test' : 'Live Mode — writing to transactions'}
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              {testMode ? 'Safe to experiment — no live data affected' : 'Imports go directly to your real data'}
+            </div>
+          </div>
+          <button onClick={() => setTestMode(t => !t)} style={{
+            padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: testMode ? C.expense : C.primary,
+            color: '#FFF', fontSize: 13, fontWeight: 700,
+            fontFamily: "'Outfit', sans-serif",
+          }}>{testMode ? 'Switch to Live' : 'Switch to Test'}</button>
+        </div>
+      </Card>
+
       {/* TEMPORARY: cleanup tool — remove once n8n is stable */}
       <Card style={{ border: `1px solid ${C.expense}`, marginTop: 8 }}>
         <div style={{ fontWeight: 600, fontSize: 14, color: C.expense, marginBottom: 12 }}>
