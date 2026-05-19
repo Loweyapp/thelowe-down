@@ -980,7 +980,7 @@ const HISTORY = [
   { label: 'May 2026',      sub: '37 transactions · £1,724.46 expenses · £23.74 income',     data: MAY_2026 },
 ];
 
-export default function ImportView({ importTxs, setView, txs, deleteTxsByBank, testMode, setTestMode }) {
+export default function ImportView({ importTxs, setView, txs, deleteTxsByBank, clearAllTxs, testMode, setTestMode }) {
   const [dragOver,   setDragOver]  = useState(false);
   const [preview,    setPreview]   = useState(null);
   const [error,      setError]     = useState('');
@@ -1240,6 +1240,25 @@ export default function ImportView({ importTxs, setView, txs, deleteTxsByBank, t
         </div>
         {bankDelete && (
           <div style={{ marginTop: 10, fontSize: 13, color: C.expense }}>{bankDelete}</div>
+        )}
+        {testMode && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+            <button onClick={async () => {
+              if (!txs.length) return;
+              if (!window.confirm(`Delete all ${txs.length} test transactions? This clears the entire transactions_test collection.`)) return;
+              const n = await clearAllTxs();
+              setBankDelete(`Cleared ${n} test transactions`);
+            }} style={{
+              width: '100%', padding: '9px 0', borderRadius: 9,
+              border: `1px solid ${C.expense}`, background: C.expense,
+              color: '#FFF', fontSize: 13, fontWeight: 700,
+              cursor: txs.length ? 'pointer' : 'default',
+              opacity: txs.length ? 1 : 0.4,
+              fontFamily: "'Outfit', sans-serif",
+            }}>
+              Clear all test data ({txs.length} transactions)
+            </button>
+          </div>
         )}
       </Card>
 
