@@ -148,6 +148,15 @@ export default function App() {
     return fresh.length;
   };
 
+  const deleteTxsByBank = async bank => {
+    const toDelete = txs.filter(t => t.bank === bank);
+    if (!toDelete.length) return 0;
+    const batch = writeBatch(db);
+    toDelete.forEach(t => batch.delete(doc(db, 'family', 'lowe', 'transactions', t.id)));
+    await batch.commit();
+    return toDelete.length;
+  };
+
   const exportCSV = () => {
     const csv = Papa.unparse(txs.map(({ id, ...t }) => t));
     const a   = Object.assign(document.createElement('a'), {
@@ -160,7 +169,7 @@ export default function App() {
   if (authLoading) return <LoadingScreen />;
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
-  const shared = { txs, cats, addTx, deleteTx, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user };
+  const shared = { txs, cats, addTx, deleteTx, deleteTxsByBank, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user };
   const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView, ask: AskView };
   const View   = VIEWS[view] || DashboardView;
 
