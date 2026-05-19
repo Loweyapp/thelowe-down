@@ -37,6 +37,8 @@ export default function App() {
   const [txs,         setTxs]         = useState([]);
   const [cats,        setCats]        = useState([]);
   const [anthropicKey, setAnthropicKey] = useState('');
+  const [testMode,    setTestMode]    = useState(false);
+  const txCollection = testMode ? 'transactions_test' : 'transactions';
   const mobile = useBreakpoint();
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    const txRef  = collection(db, 'family', 'lowe', 'transactions');
+    const txRef  = collection(db, 'family', 'lowe', txCollection);
     const catRef = collection(db, 'family', 'lowe', 'categories');
 
     const unsubTx = onSnapshot(
@@ -116,11 +118,11 @@ export default function App() {
 
   const addTx = async tx => {
     const { id, ...data } = tx;
-    await addDoc(collection(db, 'family', 'lowe', 'transactions'), data);
+    await addDoc(collection(db, 'family', 'lowe', txCollection), data);
   };
 
   const deleteTx = async id => {
-    await deleteDoc(doc(db, 'family', 'lowe', 'transactions', String(id)));
+    await deleteDoc(doc(db, 'family', 'lowe', txCollection, String(id)));
   };
 
   const addCat = async cat => {
@@ -142,7 +144,7 @@ export default function App() {
     if (!fresh.length) return 0;
     const batch = writeBatch(db);
     fresh.forEach(({ id, ...data }) => {
-      batch.set(doc(collection(db, 'family', 'lowe', 'transactions')), data);
+      batch.set(doc(collection(db, 'family', 'lowe', txCollection)), data);
     });
     await batch.commit();
     return fresh.length;
@@ -152,7 +154,7 @@ export default function App() {
     const toDelete = txs.filter(t => t.bank === bank);
     if (!toDelete.length) return 0;
     const batch = writeBatch(db);
-    toDelete.forEach(t => batch.delete(doc(db, 'family', 'lowe', 'transactions', t.id)));
+    toDelete.forEach(t => batch.delete(doc(db, 'family', 'lowe', txCollection, t.id)));
     await batch.commit();
     return toDelete.length;
   };
@@ -169,7 +171,7 @@ export default function App() {
   if (authLoading) return <LoadingScreen />;
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
-  const shared = { txs, cats, addTx, deleteTx, deleteTxsByBank, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user };
+  const shared = { txs, cats, addTx, deleteTx, deleteTxsByBank, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user, testMode, setTestMode };
   const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView, ask: AskView };
   const View   = VIEWS[view] || DashboardView;
 
