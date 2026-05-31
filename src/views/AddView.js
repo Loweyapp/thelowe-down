@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Check, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Check, AlertTriangle, Mic } from 'lucide-react';
 import { C, TX_TYPES, ACCOUNTS, todayStr } from '../constants.js';
 import { Card, Field } from '../components/UI.js';
 
-export default function AddView({ addTx, cats, txs }) {
+export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
   const [form, setForm] = useState({
     account: 'Alex', type: 'expense', date: todayStr(),
     description: '', category: '', amount: '',
   });
-  const [ok,   setOk]   = useState(false);
-  const [warn, setWarn] = useState(null); // { description, amount, date } of the existing match
+  const [ok,         setOk]         = useState(false);
+  const [warn,       setWarn]       = useState(null);
+  const [voiceState, setVoiceState] = useState('idle'); // idle | recording | processing
+  const [voiceError, setVoiceError] = useState('');
+  const [transcript, setTranscript] = useState('');
+  const recognitionRef = useRef(null);
+  const transcriptRef  = useRef('');
 
   const getCats = type =>
     type === 'income'       ? [{ id: 'i', name: 'Income'      }]
@@ -22,8 +27,13 @@ export default function AddView({ addTx, cats, txs }) {
     setForm(f => ({ ...f, category: c[0]?.name || '' }));
   }, [form.type]);
 
-  // Clear warning whenever the form changes
   useEffect(() => { setWarn(null); }, [form.description, form.amount, form.date]);
+
+  // Set default account from logged-in user
+  useEffect(() => {
+    const name = user?.displayName?.split(' ')[0];
+    if (name && ACCOUNTS.includes(name)) setForm(f => ({ ...f, account: name }));
+  }, [user]);
 
   const findDuplicate = () => {
     const amt = parseFloat(form.amount);
@@ -44,22 +54,24 @@ export default function AddView({ addTx, cats, txs }) {
     boxSizing: 'border-box', background: C.card,
   };
 
-  const doAdd = () => {
+  const doAdd = (autoListen = false) => {
     const amt = parseFloat(form.amount);
     addTx({
-      id:          Date.now(),
-      account:     form.account,
-      date:        form.date,
-      description: form.description.trim(),
-      category:    form.category,
-      amount:      form.type === 'income' ? amt : -amt,
-      type:        form.type,
+      id:              Date.now(),
+      account:         form.account,
+      date:            form.date,
+      description:     form.description.trim(),
+      description_raw: form.description.trim(),
+      category:        form.category,
+      amount:          form.type === 'income' ? amt : -amt,
+      type:            form.type,
     });
     setOk(true);
     setWarn(null);
+    setTranscript('');
     const c = getCats(form.type);
     setForm(f => ({ ...f, date: todayStr(), description: '', amount: '', category: c[0]?.name || '' }));
-    setTimeout(() => setOk(false), 2000);
+    setTimeout(() => { setOk(false); }, 2000);
   };
 
   const submit = () => {
@@ -70,9 +82,149 @@ export default function AddView({ addTx, cats, txs }) {
     doAdd();
   };
 
+  // ── Voice ──────────────────────────────────────────────────────────────────
+
+  const startRecording = e => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setVoiceError('Voice input not supported in this browser'); return; }
+
+    const recognition = new SR();
+    recognition.continuous    = true;
+    recognition.interimResults = true;
+    recognition.lang          = 'en-GB';
+    transcriptRef.current     = '';
+
+    recognition.onresult = e => {
+      let t = '';
+      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+      transcriptRef.current = t;
+      setTranscript(t);
+    };
+
+    recognition.onerror = e => {
+      if (e.error !== 'aborted') setVoiceError(`Mic error: ${e.error}`);
+      setVoiceState('idle');
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setVoiceState('recording');
+    setVoiceError('');
+    setTranscript('');
+  };
+
+  const stopRecording = async () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    const t = transcriptRef.current.trim();
+    if (!t) { setVoiceState('idle'); return; }
+    setVoiceState('processing');
+    await parseTranscript(t);
+  };
+
+  const parseTranscript = async t => {
+    if (!anthropicKey) {
+      setVoiceError('No API key — set it in the Ask view');
+      setVoiceState('idle');
+      return;
+    }
+    const catNames      = cats.map(c => c.name).join(', ');
+    const defaultAcct   = user?.displayName?.split(' ')[0] || 'Alex';
+    const yesterday     = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const currentMonth  = todayStr().slice(0, 7);
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type':    'application/json',
+          'x-api-key':       anthropicKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model:      'claude-haiku-4-5-20251001',
+          max_tokens: 256,
+          messages: [{
+            role: 'user',
+            content: `Parse this spoken transaction into JSON. Today is ${todayStr()}.
+
+Spoken: "${t}"
+
+Rules:
+- date: YYYY-MM-DD. "The fourteenth" = ${currentMonth}-14. "Yesterday" = ${yesterday}. If no date mentioned, use today.
+- description: clean readable merchant/description
+- category: exactly one of: ${catNames}
+- amount: positive number
+- type: expense, income, saving, or investment. Default expense.
+- account: Alex or Kelly. Default ${defaultAcct} unless another name is mentioned.
+
+Return only a JSON object, no markdown.`,
+          }],
+        }),
+      });
+      const data   = await res.json();
+      const parsed = JSON.parse(data.content[0].text.trim());
+      setForm(f => ({
+        ...f,
+        date:        parsed.date        || f.date,
+        description: parsed.description || f.description,
+        category:    parsed.category    || f.category,
+        amount:      parsed.amount      ? String(Math.abs(parsed.amount)) : f.amount,
+        type:        parsed.type        || f.type,
+        account:     parsed.account     || f.account,
+      }));
+      setVoiceState('idle');
+    } catch {
+      setVoiceError('Could not parse — try again');
+      setVoiceState('idle');
+    }
+  };
+
+  const micColor = voiceState === 'recording' ? '#EF4444' : C.primary;
+  const micLabel =
+    voiceState === 'recording'  ? 'Recording… release when done' :
+    voiceState === 'processing' ? 'Thinking…' :
+    'Hold to speak';
+
   return (
     <div style={{ maxWidth: 520 }}>
       <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 20 }}>Add Transaction</div>
+
+      {/* Voice button */}
+      <div style={{ marginBottom: 16, textAlign: 'center' }}>
+        <button
+          onPointerDown={startRecording}
+          onPointerUp={stopRecording}
+          onPointerCancel={stopRecording}
+          disabled={voiceState === 'processing'}
+          style={{
+            width: 72, height: 72, borderRadius: '50%', border: 'none',
+            background: voiceState === 'recording' ? '#EF4444' : voiceState === 'processing' ? C.muted : C.primary,
+            color: '#FFF', cursor: voiceState === 'processing' ? 'default' : 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: voiceState === 'recording' ? '0 0 0 8px #EF444433' : '0 2px 8px rgba(0,0,0,0.15)',
+            transition: 'all 0.15s',
+            touchAction: 'none',
+          }}
+        >
+          <Mic size={28} />
+        </button>
+        <div style={{ marginTop: 6, fontSize: 12, color: voiceState === 'recording' ? '#EF4444' : C.muted, fontWeight: 500 }}>
+          {micLabel}
+        </div>
+        {transcript && voiceState === 'idle' && (
+          <div style={{ marginTop: 6, fontSize: 12, color: C.muted, fontStyle: 'italic' }}>
+            "{transcript}"
+          </div>
+        )}
+        {voiceError && (
+          <div style={{ marginTop: 6, fontSize: 12, color: C.expense }}>{voiceError}</div>
+        )}
+      </div>
+
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -149,7 +301,7 @@ export default function AddView({ addTx, cats, txs }) {
                   background: 'transparent', color: '#92400E', fontSize: 13, fontWeight: 600,
                   cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
                 }}>Cancel</button>
-                <button onClick={doAdd} style={{
+                <button onClick={() => doAdd()} style={{
                   flex: 1, padding: '9px 0', borderRadius: 9, border: 'none',
                   background: '#F59E0B', color: '#FFF', fontSize: 13, fontWeight: 700,
                   cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
