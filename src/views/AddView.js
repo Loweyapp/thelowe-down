@@ -165,8 +165,11 @@ Return only a JSON object, no markdown.`,
           }],
         }),
       });
-      const data   = await res.json();
-      const parsed = JSON.parse(data.content[0].text.trim());
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      let text = data.content[0].text.trim();
+      text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const parsed = JSON.parse(text);
       setForm(f => ({
         ...f,
         date:        parsed.date        || f.date,
@@ -177,8 +180,8 @@ Return only a JSON object, no markdown.`,
         account:     parsed.account     || f.account,
       }));
       setVoiceState('idle');
-    } catch {
-      setVoiceError('Could not parse — try again');
+    } catch (err) {
+      setVoiceError(err.message?.includes('API') ? err.message : 'Could not parse — try again');
       setVoiceState('idle');
     }
   };
