@@ -33,7 +33,10 @@ function useBreakpoint() {
 export default function App() {
   const [user,        setUser]        = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [view,        setView]        = useState('dashboard');
+  const [view,        setView]        = useState(() => {
+    const p = new URLSearchParams(window.location.search).get('view');
+    return ['dashboard','transactions','summary','categories','add','import','ask'].includes(p) ? p : 'dashboard';
+  });
   const [txs,         setTxs]         = useState([]);
   const [cats,        setCats]        = useState([]);
   const [anthropicKey, setAnthropicKey] = useState('');
