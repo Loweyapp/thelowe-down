@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import { C, TYPE_COLOR, ICON_MAP, gbp } from '../constants.js';
 
@@ -30,6 +30,33 @@ export function StatCard({ label, value, color, Icon, sub }) {
       <div style={{ fontSize: 22, fontWeight: 700, color: color || C.text }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{sub}</div>}
     </Card>
+  );
+}
+
+function DeleteBtn({ onDelete }) {
+  const [confirm, setConfirm] = useState(false);
+  useEffect(() => {
+    if (!confirm) return;
+    const t = setTimeout(() => setConfirm(false), 3000);
+    return () => clearTimeout(t);
+  }, [confirm]);
+
+  const handleClick = () => {
+    if (confirm) { onDelete(); } else { setConfirm(true); }
+  };
+
+  return (
+    <button onClick={handleClick} style={{
+      background: confirm ? '#EF4444' : 'none',
+      border: 'none', cursor: 'pointer',
+      color: confirm ? '#FFF' : C.muted,
+      padding: confirm ? '4px 8px' : 6,
+      borderRadius: 6, fontSize: 11, fontWeight: 700,
+      transition: 'all 0.15s', flexShrink: 0,
+      fontFamily: "'Outfit', sans-serif",
+    }}>
+      {confirm ? 'Delete?' : <Trash2 size={15} />}
+    </button>
   );
 }
 
@@ -79,13 +106,7 @@ export function TxRow({ tx, onDelete, cats }) {
       <div style={{ fontWeight: 700, fontSize: 15, color, flexShrink: 0 }}>
         {plus ? '+' : '-'}{gbp(tx.amount)}
       </div>
-      {onDelete && (
-        <button onClick={() => onDelete(tx.id)} style={{
-          background: 'none', border: 'none', cursor: 'pointer', color: C.muted, padding: 6, borderRadius: 6,
-        }}>
-          <Trash2 size={15} />
-        </button>
-      )}
+      {onDelete && <DeleteBtn onDelete={() => onDelete(tx.id)} />}
     </div>
   );
 }
