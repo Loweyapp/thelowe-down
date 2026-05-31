@@ -16,6 +16,7 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
   const recognitionRef   = useRef(null);
   const transcriptRef    = useRef('');
   const finalTextRef     = useRef('');
+  const processedRef     = useRef(0);
 
   const getCats = type =>
     type === 'income'       ? [{ id: 'i', name: 'Income'      }]
@@ -96,14 +97,17 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
     recognition.lang           = 'en-GB';
     transcriptRef.current      = '';
     finalTextRef.current       = '';
+    processedRef.current       = 0;
 
     recognition.onresult = e => {
       let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let i = processedRef.current; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
           finalTextRef.current += e.results[i][0].transcript + ' ';
+          processedRef.current = i + 1;
         } else {
-          interim += e.results[i][0].transcript;
+          interim = e.results[i][0].transcript;
+          break;
         }
       }
       const t = (finalTextRef.current + interim).trim();
