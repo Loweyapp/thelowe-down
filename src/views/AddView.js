@@ -13,8 +13,9 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
   const [voiceState, setVoiceState] = useState('idle'); // idle | recording | processing
   const [voiceError, setVoiceError] = useState('');
   const [transcript, setTranscript] = useState('');
-  const recognitionRef = useRef(null);
-  const transcriptRef  = useRef('');
+  const recognitionRef   = useRef(null);
+  const transcriptRef    = useRef('');
+  const finalTextRef     = useRef('');
 
   const getCats = type =>
     type === 'income'       ? [{ id: 'i', name: 'Income'      }]
@@ -90,14 +91,22 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
     if (!SR) { setVoiceError('Voice input not supported in this browser'); return; }
 
     const recognition = new SR();
-    recognition.continuous    = true;
+    recognition.continuous     = true;
     recognition.interimResults = true;
-    recognition.lang          = 'en-GB';
-    transcriptRef.current     = '';
+    recognition.lang           = 'en-GB';
+    transcriptRef.current      = '';
+    finalTextRef.current       = '';
 
     recognition.onresult = e => {
-      let t = '';
-      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalTextRef.current += e.results[i][0].transcript + ' ';
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      const t = (finalTextRef.current + interim).trim();
       transcriptRef.current = t;
       setTranscript(t);
     };
