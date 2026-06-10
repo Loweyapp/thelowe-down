@@ -116,7 +116,17 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
         }
       };
 
-      r.onend = () => { if (holdingRef.current) startSession(); };
+      r.onend = () => {
+        if (holdingRef.current) {
+          startSession();
+        } else {
+          recognitionRef.current = null;
+          const t = transcriptRef.current.trim();
+          if (!t) { setVoiceState('idle'); return; }
+          setVoiceState('processing');
+          parseTranscript(t);
+        }
+      };
 
       recognitionRef.current = r;
       r.start();
@@ -128,16 +138,12 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
     setTranscript('');
   };
 
-  const stopRecording = async () => {
+  const stopRecording = () => {
     holdingRef.current = false;
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-      recognitionRef.current = null;
+      // onend will fire and handle processing
     }
-    const t = transcriptRef.current.trim();
-    if (!t) { setVoiceState('idle'); return; }
-    setVoiceState('processing');
-    await parseTranscript(t);
   };
 
   const parseTranscript = async t => {
