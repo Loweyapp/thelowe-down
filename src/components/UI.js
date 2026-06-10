@@ -60,7 +60,7 @@ function DeleteBtn({ onDelete }) {
   );
 }
 
-export function TxRow({ tx, onDelete, cats }) {
+export function TxRow({ tx, onDelete, updateTx, cats }) {
   const cat      = cats.find(c => c.name === tx.category);
   const plus     = tx.type === 'income';
   const color    = TYPE_COLOR[tx.type] || C.text;
@@ -106,6 +106,19 @@ export function TxRow({ tx, onDelete, cats }) {
       <div style={{ fontWeight: 700, fontSize: 15, color, flexShrink: 0 }}>
         {plus ? '+' : '-'}{gbp(tx.amount)}
       </div>
+      {tx.needsReview && (
+        <button
+          onClick={() => updateTx && updateTx(tx.id, { needsReview: false })}
+          title="Tap to mark as reviewed"
+          style={{
+            background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 6,
+            color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 6px',
+            cursor: updateTx ? 'pointer' : 'default', flexShrink: 0,
+            fontFamily: "'Outfit', sans-serif", letterSpacing: '0.02em',
+          }}>
+          Review
+        </button>
+      )}
       {onDelete && <DeleteBtn onDelete={() => onDelete(tx.id)} />}
     </div>
   );
