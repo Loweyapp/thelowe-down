@@ -13,6 +13,8 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
   const [voiceState, setVoiceState] = useState('idle'); // idle | recording | processing
   const [voiceError, setVoiceError] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [batch,      setBatch]      = useState([]);
+  const [batchOk,    setBatchOk]    = useState(0);
   const recognitionRef = useRef(null);
   const transcriptRef  = useRef('');
   const finalTextRef   = useRef('');
@@ -165,22 +167,24 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
         },
         body: JSON.stringify({
           model:      'claude-haiku-4-5-20251001',
-          max_tokens: 256,
+          max_tokens: 2048,
           messages: [{
             role: 'user',
-            content: `Parse this spoken transaction into JSON. Today is ${todayStr()}.
+            content: `Parse this dictation into transactions. Today is ${todayStr()}.
 
 Spoken: "${t}"
 
-Rules:
-- date: YYYY-MM-DD. "The fourteenth" = ${currentMonth}-14. "Yesterday" = ${yesterday}. If no date mentioned, use today.
+The speaker says "new entry" (possibly transcribed as "new entries" or similar) between transactions. Split on that phrase — it is a separator, never part of a description. A single dictation with no separator is one transaction.
+
+Rules for each transaction:
+- date: YYYY-MM-DD. "The fourteenth" = ${currentMonth}-14. "Yesterday" = ${yesterday}. If no date mentioned, use today. Dates carry forward: if a transaction has no date, reuse the most recent date mentioned before it.
 - description: clean readable merchant/description
 - category: exactly one of: ${catNames}
 - amount: positive number
 - type: expense, income, saving, or investment. Default expense.
-- account: Alex or Kelly. Default ${defaultAcct} unless another name is mentioned.
+- account: Alex or Kelly. Default ${defaultAcct} unless another name is mentioned. Also carries forward.
 
-Return only a JSON object, no markdown.`,
+Return only a JSON array of transaction objects (even for one transaction), no markdown.`,
           }],
         }),
       });
@@ -189,15 +193,19 @@ Return only a JSON object, no markdown.`,
       let text = data.content[0].text.trim();
       text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
       const parsed = JSON.parse(text);
-      setForm(f => ({
-        ...f,
-        date:        parsed.date        || f.date,
-        description: parsed.description || f.description,
-        category:    parsed.category    || f.category,
-        amount:      parsed.amount      ? String(Math.abs(parsed.amount)) : f.amount,
-        type:        parsed.type        || f.type,
-        account:     parsed.account     || f.account,
+      const items  = (Array.isArray(parsed) ? parsed : [parsed]).map(p => ({
+        date:        p.date        || todayStr(),
+        description: p.description || '',
+        category:    p.category    || cats[0]?.name || 'Other',
+        amount:      p.amount      ? String(Math.abs(p.amount)) : '',
+        type:        p.type        || 'expense',
+        account:     p.account     || defaultAcct,
       }));
+      if (items.length === 1) {
+        setForm(f => ({ ...f, ...items[0] }));
+      } else {
+        setBatch(items);
+      }
       setVoiceState('idle');
     } catch (err) {
       setVoiceError(err.message?.includes('API') ? err.message : 'Could not parse — try again');
@@ -205,11 +213,37 @@ Return only a JSON object, no markdown.`,
     }
   };
 
+  const updateBatch = (i, key, val) =>
+    setBatch(b => b.map((item, j) => j === i ? { ...item, [key]: val } : item));
+
+  const removeBatch = i => setBatch(b => b.filter((_, j) => j !== i));
+
+  const addAllBatch = () => {
+    const valid = batch.filter(b => b.description.trim() && parseFloat(b.amount) > 0);
+    valid.forEach(b => {
+      const amt = parseFloat(b.amount);
+      addTx({
+        id:              Date.now() + Math.random(),
+        account:         b.account,
+        date:            b.date,
+        description:     b.description.trim(),
+        description_raw: b.description.trim(),
+        category:        b.category,
+        amount:          b.type === 'income' ? amt : -amt,
+        type:            b.type,
+      });
+    });
+    setBatchOk(valid.length);
+    setBatch([]);
+    setTranscript('');
+    setTimeout(() => setBatchOk(0), 3000);
+  };
+
   const micColor = voiceState === 'recording' ? '#EF4444' : C.primary;
   const micLabel =
     voiceState === 'recording'  ? 'Recording… release when done' :
     voiceState === 'processing' ? 'Thinking…' :
-    'Hold to speak';
+    'Hold to speak — say "new entry" between transactions';
 
   return (
     <div style={{ maxWidth: 520 }}>
@@ -247,6 +281,81 @@ Return only a JSON object, no markdown.`,
         )}
       </div>
 
+      {batchOk > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', marginBottom: 16,
+          borderRadius: 10, background: '#F0FDF4', color: C.income, fontSize: 14, fontWeight: 500,
+        }}>
+          <Check size={16} />{batchOk} transaction{batchOk > 1 ? 's' : ''} added!
+        </div>
+      )}
+
+      {batch.length > 0 && (
+        <Card>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>
+            Review {batch.length} transaction{batch.length > 1 ? 's' : ''}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {batch.map((b, i) => (
+              <div key={i} style={{
+                border: `1px solid ${C.border}`, borderRadius: 12, padding: 12,
+                display: 'flex', flexDirection: 'column', gap: 8,
+              }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input value={b.description}
+                    onChange={e => updateBatch(i, 'description', e.target.value)}
+                    placeholder="Description"
+                    style={{ ...inp, flex: 1, padding: '9px 12px', fontSize: 14 }} />
+                  <input type="number" value={b.amount}
+                    onChange={e => updateBatch(i, 'amount', e.target.value)}
+                    placeholder="0.00" min="0" step="0.01"
+                    style={{ ...inp, width: 90, padding: '9px 12px', fontSize: 14, fontWeight: 700 }} />
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input type="date" value={b.date}
+                    onChange={e => updateBatch(i, 'date', e.target.value)}
+                    style={{ ...inp, flex: 1, padding: '9px 10px', fontSize: 13 }} />
+                  <select value={b.category}
+                    onChange={e => updateBatch(i, 'category', e.target.value)}
+                    style={{ ...inp, flex: 1, padding: '9px 10px', fontSize: 13, cursor: 'pointer' }}>
+                    {getCats(b.type).map(c => (
+                      <option key={c.id || c.name} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  <select value={b.account}
+                    onChange={e => updateBatch(i, 'account', e.target.value)}
+                    style={{ ...inp, width: 78, padding: '9px 8px', fontSize: 13, cursor: 'pointer' }}>
+                    {ACCOUNTS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                  <button onClick={() => removeBatch(i)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: C.muted, padding: 4, flexShrink: 0, fontSize: 18, lineHeight: 1,
+                  }}>×</button>
+                </div>
+                {(!b.description.trim() || !(parseFloat(b.amount) > 0)) && (
+                  <div style={{ fontSize: 12, color: C.expense }}>
+                    Needs a description and amount — will be skipped
+                  </div>
+                )}
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { setBatch([]); setTranscript(''); }} style={{
+                flex: 1, padding: 13, borderRadius: 12, border: `1px solid ${C.border}`,
+                background: 'transparent', color: C.muted, fontSize: 15, fontWeight: 600,
+                cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+              }}>Discard</button>
+              <button onClick={addAllBatch} style={{
+                flex: 2, padding: 13, borderRadius: 12, border: 'none', background: C.primary,
+                color: '#FFF', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                fontFamily: "'Outfit', sans-serif",
+              }}>Add {batch.filter(b => b.description.trim() && parseFloat(b.amount) > 0).length} transactions</button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {batch.length === 0 && (
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -351,6 +460,7 @@ Return only a JSON object, no markdown.`,
 
         </div>
       </Card>
+      )}
     </div>
   );
 }
