@@ -96,6 +96,7 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
     holdingRef.current    = true;
     finalTextRef.current  = '';
     transcriptRef.current = '';
+    let firstStart        = true;
 
     const startSession = () => {
       if (!holdingRef.current) return;
@@ -103,6 +104,14 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
       r.continuous     = false;
       r.interimResults = false;
       r.lang           = 'en-GB';
+
+      r.onstart = () => {
+        if (!firstStart) return;
+        firstStart = false;
+        // Mic is genuinely live now — show red and buzz
+        setVoiceState('recording');
+        if (navigator.vibrate) navigator.vibrate(60);
+      };
 
       r.onresult = ev => {
         finalTextRef.current += ev.results[0][0].transcript + ' ';
@@ -125,7 +134,7 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
     };
 
     startSession();
-    setVoiceState('recording');
+    setVoiceState('starting');
     setVoiceError('');
     setTranscript('');
   };
@@ -136,6 +145,7 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
+    if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
     // Wait 350ms for any pending onresult to fire before reading transcript
     setTimeout(() => {
       const t = transcriptRef.current.trim();
@@ -239,11 +249,15 @@ Return only a JSON array of transaction objects (even for one transaction), no m
     setTimeout(() => setBatchOk(0), 3000);
   };
 
-  const micColor = voiceState === 'recording' ? '#EF4444' : C.primary;
   const micLabel =
+    voiceState === 'starting'   ? 'Starting mic — wait for the buzz…' :
     voiceState === 'recording'  ? 'Recording… release when done' :
     voiceState === 'processing' ? 'Thinking…' :
     'Hold to speak — say "new entry" between transactions';
+  const micBg =
+    voiceState === 'recording'  ? '#EF4444' :
+    voiceState === 'starting'   ? '#F59E0B' :
+    voiceState === 'processing' ? C.muted : C.primary;
 
   return (
     <div style={{ maxWidth: 520 }}>
@@ -258,7 +272,7 @@ Return only a JSON array of transaction objects (even for one transaction), no m
           disabled={voiceState === 'processing'}
           style={{
             width: 72, height: 72, borderRadius: '50%', border: 'none',
-            background: voiceState === 'recording' ? '#EF4444' : voiceState === 'processing' ? C.muted : C.primary,
+            background: micBg,
             color: '#FFF', cursor: voiceState === 'processing' ? 'default' : 'pointer',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: voiceState === 'recording' ? '0 0 0 8px #EF444433' : '0 2px 8px rgba(0,0,0,0.15)',
@@ -451,11 +465,23 @@ Return only a JSON array of transaction objects (even for one transaction), no m
           )}
 
           {!warn && (
-            <button onClick={submit} style={{
-              padding: 14, borderRadius: 12, border: 'none', background: C.primary,
-              color: '#FFF', fontSize: 16, fontWeight: 700, cursor: 'pointer',
-              fontFamily: "'Outfit', sans-serif",
-            }}>Add Transaction</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => {
+                const c = getCats(form.type);
+                setForm(f => ({ ...f, date: todayStr(), description: '', amount: '', category: c[0]?.name || '' }));
+                setTranscript('');
+                setWarn(null);
+              }} style={{
+                flex: 1, padding: 14, borderRadius: 12, border: `1px solid ${C.border}`,
+                background: 'transparent', color: C.muted, fontSize: 15, fontWeight: 600,
+                cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+              }}>Clear</button>
+              <button onClick={submit} style={{
+                flex: 2, padding: 14, borderRadius: 12, border: 'none', background: C.primary,
+                color: '#FFF', fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                fontFamily: "'Outfit', sans-serif",
+              }}>Add Transaction</button>
+            </div>
           )}
 
         </div>
