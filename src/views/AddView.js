@@ -105,10 +105,13 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
       r.interimResults = false;
       r.lang           = 'en-GB';
 
+      // Guard so onend + onerror can't both trigger a restart
+      let ended = false;
+      const tryRestart = () => { if (!ended) { ended = true; startSession(); } };
+
       r.onstart = () => {
         if (!firstStart) return;
         firstStart = false;
-        // Mic is genuinely live now — show red and buzz
         setVoiceState('recording');
         if (navigator.vibrate) navigator.vibrate(60);
       };
@@ -120,14 +123,14 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
       };
 
       r.onerror = ev => {
-        if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
-          setVoiceError(`Mic error: ${ev.error}`);
-          holdingRef.current = false;
-          setVoiceState('idle');
-        }
+        if (ev.error === 'no-speech') { tryRestart(); return; }
+        if (ev.error === 'aborted')   return;
+        setVoiceError(`Mic error: ${ev.error}`);
+        holdingRef.current = false;
+        setVoiceState('idle');
       };
 
-      r.onend = () => { if (holdingRef.current) startSession(); };
+      r.onend = () => { if (holdingRef.current) tryRestart(); };
 
       recognitionRef.current = r;
       r.start();
