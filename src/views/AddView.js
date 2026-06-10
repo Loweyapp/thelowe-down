@@ -6,7 +6,7 @@ import { Card, Field } from '../components/UI.js';
 export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
   const [form, setForm] = useState({
     account: 'Alex', type: 'expense', date: todayStr(),
-    description: '', category: '', amount: '',
+    description: '', category: '', amount: '', needsReview: false,
   });
   const [ok,         setOk]         = useState(false);
   const [warn,       setWarn]       = useState(null);
@@ -69,12 +69,13 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
       category:        form.category,
       amount:          form.type === 'income' ? amt : -amt,
       type:            form.type,
+      needsReview:     form.needsReview || false,
     });
     setOk(true);
     setWarn(null);
     setTranscript('');
     const c = getCats(form.type);
-    setForm(f => ({ ...f, date: todayStr(), description: '', amount: '', category: c[0]?.name || '' }));
+    setForm(f => ({ ...f, date: todayStr(), description: '', amount: '', category: c[0]?.name || '', needsReview: false }));
     setTimeout(() => { setOk(false); }, 2000);
   };
 
@@ -196,6 +197,7 @@ Rules for each transaction:
 - amount: positive number
 - type: expense, income, saving, or investment. Default expense.
 - account: Alex or Kelly. Default ${defaultAcct} unless another name is mentioned. Also carries forward.
+- needsReview: true if the speaker expresses uncertainty — phrases like "not sure", "need to check", "check later", "unclear", "TBC", "might be", "I think", "not certain". Otherwise false.
 
 Return only a JSON array of transaction objects (even for one transaction), no markdown.`,
           }],
@@ -213,6 +215,7 @@ Return only a JSON array of transaction objects (even for one transaction), no m
         amount:      p.amount      ? String(Math.abs(p.amount)) : '',
         type:        p.type        || 'expense',
         account:     p.account     || defaultAcct,
+        needsReview: p.needsReview || false,
       }));
       if (items.length === 1) {
         setForm(f => ({ ...f, ...items[0] }));
@@ -244,6 +247,7 @@ Return only a JSON array of transaction objects (even for one transaction), no m
         category:        b.category,
         amount:          b.type === 'income' ? amt : -amt,
         type:            b.type,
+        needsReview:     b.needsReview || false,
       });
     });
     setBatchOk(valid.length);
@@ -344,6 +348,12 @@ Return only a JSON array of transaction objects (even for one transaction), no m
                     style={{ ...inp, width: 78, padding: '9px 8px', fontSize: 13, cursor: 'pointer' }}>
                     {ACCOUNTS.map(a => <option key={a} value={a}>{a}</option>)}
                   </select>
+                  <button onClick={() => updateBatch(i, 'needsReview', !b.needsReview)} title="Flag for review" style={{
+                    background: b.needsReview ? '#FEF3C7' : 'transparent',
+                    border: `1px solid ${b.needsReview ? '#F59E0B' : C.border}`,
+                    borderRadius: 6, cursor: 'pointer', padding: '5px 7px', flexShrink: 0,
+                    fontSize: 13, color: b.needsReview ? '#92400E' : C.muted,
+                  }}>⚑</button>
                   <button onClick={() => removeBatch(i)} style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     color: C.muted, padding: 4, flexShrink: 0, fontSize: 18, lineHeight: 1,
@@ -430,6 +440,18 @@ Return only a JSON array of transaction objects (even for one transaction), no m
               onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
               placeholder="0.00" min="0" step="0.01" style={inp} />
           </Field>
+
+          <button onClick={() => setForm(f => ({ ...f, needsReview: !f.needsReview }))} style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10,
+            border: `1px solid ${form.needsReview ? '#F59E0B' : C.border}`,
+            background: form.needsReview ? '#FEF3C7' : 'transparent',
+            color: form.needsReview ? '#92400E' : C.muted,
+            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+            width: '100%', boxSizing: 'border-box',
+          }}>
+            <span style={{ fontSize: 15 }}>⚑</span>
+            {form.needsReview ? 'Flagged for review — tap to unflag' : 'Flag for review'}
+          </button>
 
           {warn && (
             <div style={{
