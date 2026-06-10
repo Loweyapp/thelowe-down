@@ -13,10 +13,10 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
   const [voiceState, setVoiceState] = useState('idle'); // idle | recording | processing
   const [voiceError, setVoiceError] = useState('');
   const [transcript, setTranscript] = useState('');
-  const recognitionRef   = useRef(null);
-  const transcriptRef    = useRef('');
-  const finalTextRef     = useRef('');
-  const processedRef     = useRef(0);
+  const recognitionRef = useRef(null);
+  const transcriptRef  = useRef('');
+  const finalTextRef   = useRef('');
+  const holdingRef     = useRef(false);
 
   const getCats = type =>
     type === 'income'       ? [{ id: 'i', name: 'Income'      }]
@@ -91,43 +91,45 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setVoiceError('Voice input not supported in this browser'); return; }
 
-    const recognition = new SR();
-    recognition.continuous     = true;
-    recognition.interimResults = true;
-    recognition.lang           = 'en-GB';
-    transcriptRef.current      = '';
-    finalTextRef.current       = '';
-    processedRef.current       = 0;
+    holdingRef.current    = true;
+    finalTextRef.current  = '';
+    transcriptRef.current = '';
 
-    recognition.onresult = e => {
-      let interim = '';
-      for (let i = processedRef.current; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          finalTextRef.current += e.results[i][0].transcript + ' ';
-          processedRef.current = i + 1;
-        } else {
-          interim = e.results[i][0].transcript;
-          break;
+    const startSession = () => {
+      if (!holdingRef.current) return;
+      const r = new SR();
+      r.continuous     = false;
+      r.interimResults = false;
+      r.lang           = 'en-GB';
+
+      r.onresult = ev => {
+        finalTextRef.current += ev.results[0][0].transcript + ' ';
+        transcriptRef.current = finalTextRef.current.trim();
+        setTranscript(finalTextRef.current.trim());
+      };
+
+      r.onerror = ev => {
+        if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
+          setVoiceError(`Mic error: ${ev.error}`);
+          holdingRef.current = false;
+          setVoiceState('idle');
         }
-      }
-      const t = (finalTextRef.current + interim).trim();
-      transcriptRef.current = t;
-      setTranscript(t);
+      };
+
+      r.onend = () => { if (holdingRef.current) startSession(); };
+
+      recognitionRef.current = r;
+      r.start();
     };
 
-    recognition.onerror = e => {
-      if (e.error !== 'aborted') setVoiceError(`Mic error: ${e.error}`);
-      setVoiceState('idle');
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
+    startSession();
     setVoiceState('recording');
     setVoiceError('');
     setTranscript('');
   };
 
   const stopRecording = async () => {
+    holdingRef.current = false;
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
