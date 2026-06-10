@@ -116,17 +116,7 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
         }
       };
 
-      r.onend = () => {
-        if (holdingRef.current) {
-          startSession();
-        } else {
-          recognitionRef.current = null;
-          const t = transcriptRef.current.trim();
-          if (!t) { setVoiceState('idle'); return; }
-          setVoiceState('processing');
-          parseTranscript(t);
-        }
-      };
+      r.onend = () => { if (holdingRef.current) startSession(); };
 
       recognitionRef.current = r;
       r.start();
@@ -142,8 +132,16 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
     holdingRef.current = false;
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-      // onend will fire and handle processing
+      recognitionRef.current = null;
     }
+    // Wait 350ms for any pending onresult to fire before reading transcript
+    setTimeout(() => {
+      const t = transcriptRef.current.trim();
+      setVoiceError(`DEBUG: got "${t.slice(0, 40)}"`);
+      if (!t) { setVoiceState('idle'); return; }
+      setVoiceState('processing');
+      parseTranscript(t);
+    }, 350);
   };
 
   const parseTranscript = async t => {
