@@ -137,7 +137,6 @@ export default function AddView({ addTx, cats, txs, anthropicKey, user }) {
     // Wait 350ms for any pending onresult to fire before reading transcript
     setTimeout(() => {
       const t = transcriptRef.current.trim();
-      setVoiceError(`DEBUG: got "${t.slice(0, 40)}"`);
       if (!t) { setVoiceState('idle'); return; }
       setVoiceState('processing');
       parseTranscript(t);
