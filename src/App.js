@@ -129,6 +129,10 @@ export default function App() {
     await deleteDoc(doc(db, 'family', 'lowe', txCollection, String(id)));
   };
 
+  const updateTx = async (id, updates) => {
+    await updateDoc(doc(db, 'family', 'lowe', txCollection, String(id)), updates);
+  };
+
   const addCat = async cat => {
     const { id, ...data } = cat;
     await addDoc(collection(db, 'family', 'lowe', 'categories'), data);
@@ -183,7 +187,7 @@ export default function App() {
   if (authLoading) return <LoadingScreen />;
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
-  const shared = { txs, cats, addTx, deleteTx, deleteTxsByBank, clearAllTxs, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user, testMode, setTestMode };
+  const shared = { txs, cats, addTx, deleteTx, updateTx, deleteTxsByBank, clearAllTxs, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user, testMode, setTestMode };
   const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView, ask: AskView };
   const View   = VIEWS[view] || DashboardView;
 
