@@ -6,11 +6,12 @@ import { NavBtn, TxRow, EmptyState } from '../components/UI.js';
 const fmtDay = date =>
   new Date(date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 
-export default function TransactionsView({ txs, cats, deleteTx }) {
+export default function TransactionsView({ txs, cats, deleteTx, updateTx }) {
   const months = [...new Set(txs.map(t => mkKey(t.date)))].sort().reverse();
-  const [idx,     setIdx]    = useState(0);
-  const [account, setAccount] = useState('All');
-  const [groupBy, setGroupBy] = useState('date');
+  const [idx,        setIdx]       = useState(0);
+  const [account,    setAccount]   = useState('All');
+  const [groupBy,    setGroupBy]   = useState('date');
+  const [reviewOnly, setReviewOnly] = useState(false);
 
   useEffect(() => {
     if (document.getElementById('tx-anim-style')) return;
@@ -23,7 +24,7 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
   const sel     = months[idx] || mkKey(todayStr());
   const acctTxs = account === 'All' ? txs : txs.filter(t => t.account === account);
   const mTxs    = acctTxs
-    .filter(t => mkKey(t.date) === sel)
+    .filter(t => reviewOnly ? t.needsReview : mkKey(t.date) === sel)
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const income  = mTxs.filter(t => t.type === 'income').reduce((s, t)  => s + Math.abs(t.amount), 0);
@@ -65,11 +66,20 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
   return (
     <div style={{ maxWidth: 720 }}>
 
-      {/* Account filter */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+      {/* Account filter + Needs review toggle */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
         {['All', ...ACCOUNTS].map(a => (
           <button key={a} onClick={() => setAccount(a)} style={pillStyle(account === a)}>{a}</button>
         ))}
+        <button onClick={() => setReviewOnly(r => !r)} style={{
+          ...pillStyle(reviewOnly),
+          background: reviewOnly ? '#F59E0B' : C.card,
+          color:      reviewOnly ? '#FFF'    : C.muted,
+          border:     `1px solid ${reviewOnly ? '#F59E0B' : C.border}`,
+          marginLeft: 'auto',
+        }}>
+          {reviewOnly ? `⚑ Needs review (${txs.filter(t => t.needsReview).length})` : `⚑ ${txs.filter(t => t.needsReview).length} to review`}
+        </button>
       </div>
 
       {/* Month navigation */}
@@ -123,7 +133,7 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
             </div>
           </div>
           <div style={cardStyle}>
-            {dateMap[date].map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} cats={cats} />)}
+            {dateMap[date].map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} updateTx={updateTx} cats={cats} />)}
           </div>
         </div>
       ))}
@@ -144,7 +154,7 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: C.expense }}>{gbp(total)}</div>
                 </div>
                 <div style={cardStyle}>
-                  {catMap[cat].map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} cats={cats} />)}
+                  {catMap[cat].map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} updateTx={updateTx} cats={cats} />)}
                 </div>
               </div>
             );
@@ -158,7 +168,7 @@ export default function TransactionsView({ txs, cats, deleteTx }) {
                 </div>
               </div>
               <div style={cardStyle}>
-                {incomeItems.map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} cats={cats} />)}
+                {incomeItems.map(tx => <TxRow key={tx.id} tx={tx} onDelete={deleteTx} updateTx={updateTx} cats={cats} />)}
               </div>
             </div>
           )}
