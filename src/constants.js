@@ -6,7 +6,7 @@ import {
   Banknote, PiggyBank, TrendingUp,
 } from 'lucide-react';
 
-export const VERSION = 'v1.3.35';
+export const VERSION = 'v1.3.36';
 
 export const C = {
   primary:    '#0ABFA3',
