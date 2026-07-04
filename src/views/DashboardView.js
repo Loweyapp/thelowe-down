@@ -1,28 +1,35 @@
 import React, { useState } from 'react';
 import {
   TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight, Download, Upload,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { C, RANGES, ACCOUNTS, gbp, mkKey, mkLabel } from '../constants.js';
-import { Card, StatCard, TxRow, EmptyState } from '../components/UI.js';
+import { C, RANGES, ACCOUNTS, gbp, mkKey, mkLabel, todayStr } from '../constants.js';
+import { Card, StatCard, TxRow, EmptyState, NavBtn } from '../components/UI.js';
 
 export default function DashboardView({ txs, cats, deleteTx, exportCSV, setView, mobile }) {
   const [rangeIdx, setRangeIdx] = useState(2);
   const [account,  setAccount]  = useState('All');
+  const [monthMode, setMonthMode] = useState(false);
+  const [monthIdx,  setMonthIdx]  = useState(0);
+
+  const months   = [...new Set(txs.map(t => mkKey(t.date)))].sort().reverse();
+  const selMonth = months[monthIdx] || mkKey(todayStr());
 
   const cutoff   = RANGES[rangeIdx].days === Infinity ? null
     : new Date(Date.now() - RANGES[rangeIdx].days * 86400000).toISOString().slice(0, 10);
-  const byDate   = cutoff ? txs.filter(t => t.date >= cutoff) : txs;
+  const byDate   = monthMode ? txs.filter(t => mkKey(t.date) === selMonth)
+    : (cutoff ? txs.filter(t => t.date >= cutoff) : txs);
   const filtered = account === 'All' ? byDate : byDate.filter(t => t.account === account);
 
   const sum    = type => filtered.filter(t => t.type === type).reduce((s, t) => s + Math.abs(t.amount), 0);
   const income = sum('income'), expense = sum('expense'), saving = sum('saving'), invest = sum('investment');
   const net    = income - expense - saving - invest;
 
-  const byDay    = RANGES[rangeIdx].days <= 90;
+  const byDay    = monthMode || RANGES[rangeIdx].days <= 90;
   const fmtDayShort = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
   const byBucket = {};
@@ -86,19 +93,38 @@ export default function DashboardView({ txs, cats, deleteTx, exportCSV, setView,
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontWeight: 600, fontSize: 16 }}>Cash Flow</div>
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {RANGES.map((r, i) => (
-              <button key={r.label} onClick={() => setRangeIdx(i)} style={{
+              <button key={r.label} onClick={() => { setMonthMode(false); setRangeIdx(i); }} style={{
                 padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: rangeIdx === i ? C.primary : C.bg,
-                color:      rangeIdx === i ? '#FFF' : C.muted,
+                background: !monthMode && rangeIdx === i ? C.primary : C.bg,
+                color:      !monthMode && rangeIdx === i ? '#FFF' : C.muted,
                 fontSize: 12, fontWeight: 600, fontFamily: "'Outfit', sans-serif",
               }}>
                 {r.label}
               </button>
             ))}
+            <button onClick={() => setMonthMode(true)} style={{
+              padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: monthMode ? C.primary : C.bg,
+              color:      monthMode ? '#FFF' : C.muted,
+              fontSize: 12, fontWeight: 600, fontFamily: "'Outfit', sans-serif",
+            }}>
+              Month
+            </button>
           </div>
         </div>
+        {monthMode && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 16 }}>
+            <NavBtn onClick={() => setMonthIdx(i => Math.min(i + 1, months.length - 1))} disabled={monthIdx >= months.length - 1}>
+              <ChevronLeft size={16} />
+            </NavBtn>
+            <div style={{ fontWeight: 600, fontSize: 14, minWidth: 120, textAlign: 'center' }}>{mkLabel(selMonth)}</div>
+            <NavBtn onClick={() => setMonthIdx(i => Math.max(i - 1, 0))} disabled={monthIdx === 0}>
+              <ChevronRight size={16} />
+            </NavBtn>
+          </div>
+        )}
         {areaData.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={areaData}>
