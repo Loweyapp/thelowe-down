@@ -22,16 +22,19 @@ export default function DashboardView({ txs, cats, deleteTx, exportCSV, setView,
   const income = sum('income'), expense = sum('expense'), saving = sum('saving'), invest = sum('investment');
   const net    = income - expense - saving - invest;
 
-  const byMonth = {};
+  const byDay    = RANGES[rangeIdx].days <= 90;
+  const fmtDayShort = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+  const byBucket = {};
   filtered.forEach(t => {
-    const k = mkKey(t.date);
-    if (!byMonth[k]) byMonth[k] = { month: k, income: 0, expenses: 0 };
-    if (t.type === 'income') byMonth[k].income   += Math.abs(t.amount);
-    else                     byMonth[k].expenses += Math.abs(t.amount);
+    const k = byDay ? t.date : mkKey(t.date);
+    if (!byBucket[k]) byBucket[k] = { month: k, income: 0, expenses: 0 };
+    if (t.type === 'income') byBucket[k].income   += Math.abs(t.amount);
+    else                     byBucket[k].expenses += Math.abs(t.amount);
   });
-  const areaData = Object.values(byMonth)
+  const areaData = Object.values(byBucket)
     .sort((a, b) => a.month.localeCompare(b.month))
-    .map(d => ({ ...d, month: mkLabel(d.month) }));
+    .map(d => ({ ...d, month: byDay ? fmtDayShort(d.month) : mkLabel(d.month) }));
 
   const byCat = {};
   filtered.filter(t => t.type === 'expense').forEach(t => {
