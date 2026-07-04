@@ -44,6 +44,51 @@ const SUGGESTIONS = [
   'What were my biggest expenses recently?',
 ];
 
+// Lightweight markdown for assistant replies: **bold**, "- " / "1. " lists,
+// "#" headings, paragraphs. Claude's answers read as raw asterisks/dashes
+// without this since messages render as plain pre-wrap text otherwise.
+function renderInline(text, keyPrefix) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => part.startsWith('**') && part.endsWith('**')
+    ? <strong key={`${keyPrefix}-${i}`}>{part.slice(2, -2)}</strong>
+    : <React.Fragment key={`${keyPrefix}-${i}`}>{part}</React.Fragment>
+  );
+}
+
+function Markdown({ text }) {
+  const lines  = text.split('\n');
+  const blocks = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (/^\s*[-*•]\s+/.test(lines[i])) {
+      const items = [];
+      while (i < lines.length && /^\s*[-*•]\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*[-*•]\s+/, '')); i++; }
+      blocks.push({ type: 'ul', items });
+    } else if (/^\s*\d+[.)]\s+/.test(lines[i])) {
+      const items = [];
+      while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*\d+[.)]\s+/, '')); i++; }
+      blocks.push({ type: 'ol', items });
+    } else if (/^#{1,3}\s+/.test(lines[i])) {
+      blocks.push({ type: 'h', text: lines[i].replace(/^#{1,3}\s+/, '') });
+      i++;
+    } else if (lines[i].trim() === '') {
+      i++;
+    } else {
+      const paraLines = [];
+      while (i < lines.length && lines[i].trim() !== '' && !/^\s*[-*•]\s+/.test(lines[i]) && !/^\s*\d+[.)]\s+/.test(lines[i]) && !/^#{1,3}\s+/.test(lines[i])) {
+        paraLines.push(lines[i]); i++;
+      }
+      blocks.push({ type: 'p', text: paraLines.join(' ') });
+    }
+  }
+
+  return blocks.map((b, bi) => {
+    if (b.type === 'ul') return <ul key={bi} style={{ margin: '4px 0', paddingLeft: 20 }}>{b.items.map((it, ii) => <li key={ii} style={{ marginBottom: 3 }}>{renderInline(it, `${bi}-${ii}`)}</li>)}</ul>;
+    if (b.type === 'ol') return <ol key={bi} style={{ margin: '4px 0', paddingLeft: 20 }}>{b.items.map((it, ii) => <li key={ii} style={{ marginBottom: 3 }}>{renderInline(it, `${bi}-${ii}`)}</li>)}</ol>;
+    if (b.type === 'h')  return <div key={bi} style={{ fontWeight: 700, marginTop: bi ? 10 : 0, marginBottom: 3 }}>{renderInline(b.text, `${bi}`)}</div>;
+    return <div key={bi} style={{ marginBottom: bi < blocks.length - 1 ? 8 : 0 }}>{renderInline(b.text, `${bi}`)}</div>;
+  });
+}
+
 export default function AskView({ txs, cats, anthropicKey, saveAnthropicKey }) {
   const [messages,     setMessages]     = useState([]);
   const [input,        setInput]        = useState('');
@@ -81,7 +126,7 @@ export default function AskView({ txs, cats, anthropicKey, saveAnthropicKey }) {
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 1024,
-          system: `You are a personal finance assistant for The LoweDown app. Answer questions concisely using the data provided. Use £ for currency. Be specific with numbers. If asked about something not in the data, say so.\n\n${buildContext(txs, cats)}`,
+          system: `You are a personal finance assistant for The LoweDown app. Answer questions concisely using the data provided. Use £ for currency. Be specific with numbers. If asked about something not in the data, say so. Format for readability: **bold** key figures, use "- " bullet lists for breakdowns of more than 2 items.\n\n${buildContext(txs, cats)}`,
           messages: history.slice(-10).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
         }),
       });
@@ -199,23 +244,37 @@ export default function AskView({ txs, cats, anthropicKey, saveAnthropicKey }) {
         )}
 
         {messages.map((msg, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+          <div key={i} style={{ display: 'flex', gap: 8, justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            {msg.role === 'assistant' && (
+              <div style={{
+                width: 26, height: 26, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                background: `${C.primary}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Sparkles size={13} color={C.primary} />
+              </div>
+            )}
             <div style={{
               maxWidth: '85%', padding: '10px 14px', borderRadius: 14,
               background: msg.role === 'user' ? C.primary : C.card,
               color:      msg.role === 'user' ? '#FFF'    : C.text,
               border:     msg.role === 'user' ? 'none'    : `1px solid ${C.border}`,
-              fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap',
+              fontSize: 14, lineHeight: 1.55,
               borderBottomRightRadius: msg.role === 'user' ? 4 : 14,
               borderBottomLeftRadius:  msg.role === 'user' ? 14 : 4,
             }}>
-              {msg.text}
+              {msg.role === 'assistant' ? <Markdown text={msg.text} /> : <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>}
             </div>
           </div>
         ))}
 
         {loading && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-start' }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+              background: `${C.primary}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Sparkles size={13} color={C.primary} />
+            </div>
             <div style={{
               padding: '10px 16px', borderRadius: 14, borderBottomLeftRadius: 4,
               background: C.card, border: `1px solid ${C.border}`,

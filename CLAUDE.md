@@ -93,13 +93,20 @@ using:
   (all transactions) and from `TransactionsView` on mobile (exports the
   currently filtered view — respects account/month/review filters).
 
-## Feature state (as of v1.3.37)
+## Feature state (as of v1.3.42)
 
 - `needsReview` flag: settable via voice-uncertainty detection, the
   Add-view form toggle, batch voice entry, and filterable in
   `TransactionsView`.
-- Transaction data currently populated up to ~11 May 2026 from an earlier
-  import.
+- Dashboard's Cash Flow chart buckets by day for short ranges (30D/3M) and
+  by month for longer ones (6M/1Y/All), plus a "Month" mode to page through
+  a specific calendar month — see `src/views/DashboardView.js`.
+- Subscriptions view (`src/views/SubscriptionsView.js`, nav id
+  `subscriptions`): detects recurring charges across all categories via
+  `family/lowe/subscriptions` (not test-mode-scoped — it's a categorization
+  preference, not transaction data). See `BACKLOG.md` for planned
+  refinements.
+- See `BACKLOG.md` for other planned/rejected features.
 
 ## Working conventions for this repo
 
