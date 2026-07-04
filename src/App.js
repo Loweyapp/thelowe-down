@@ -15,6 +15,7 @@ import { Sidebar, TopHeader, BottomNav } from './components/Navigation.js';
 import DashboardView     from './views/DashboardView.js';
 import TransactionsView  from './views/TransactionsView.js';
 import SummaryView       from './views/SummaryView.js';
+import SubscriptionsView from './views/SubscriptionsView.js';
 import CategoriesView    from './views/CategoriesView.js';
 import AddView           from './views/AddView.js';
 import ImportView        from './views/ImportView.js';
@@ -35,10 +36,11 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [view,        setView]        = useState(() => {
     const p = new URLSearchParams(window.location.search).get('view');
-    return ['dashboard','transactions','summary','categories','add','import','ask'].includes(p) ? p : 'dashboard';
+    return ['dashboard','transactions','summary','subscriptions','categories','add','import','ask'].includes(p) ? p : 'dashboard';
   });
   const [txs,         setTxs]         = useState([]);
   const [cats,        setCats]        = useState([]);
+  const [subs,        setSubs]        = useState([]);
   const [anthropicKey, setAnthropicKey] = useState('');
   const [testMode,    setTestMode]    = useState(false);
   const txCollection = testMode ? 'transactions_test' : 'transactions';
@@ -58,8 +60,9 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     setTxs([]);
-    const txRef  = collection(db, 'family', 'lowe', txCollection);
-    const catRef = collection(db, 'family', 'lowe', 'categories');
+    const txRef   = collection(db, 'family', 'lowe', txCollection);
+    const catRef  = collection(db, 'family', 'lowe', 'categories');
+    const subsRef = collection(db, 'family', 'lowe', 'subscriptions');
 
     const unsubTx = onSnapshot(
       query(txRef, orderBy('date', 'desc')),
@@ -93,12 +96,16 @@ export default function App() {
       }
     });
 
+    const unsubSubs = onSnapshot(subsRef, snap => {
+      setSubs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
     const settingsRef = doc(db, 'users', user.uid, 'settings', 'config');
     getDoc(settingsRef).then(snap => {
       if (snap.exists()) setAnthropicKey(snap.data().anthropicKey || '');
     });
 
-    return () => { unsubTx(); unsubCat(); };
+    return () => { unsubTx(); unsubCat(); unsubSubs(); };
   }, [user, txCollection]);
 
   const saveAnthropicKey = async key => {
@@ -146,6 +153,19 @@ export default function App() {
     await updateDoc(doc(db, 'family', 'lowe', 'categories', String(id)), updates);
   };
 
+  const addSub = async sub => {
+    const { id, ...data } = sub;
+    await addDoc(collection(db, 'family', 'lowe', 'subscriptions'), data);
+  };
+
+  const deleteSub = async id => {
+    await deleteDoc(doc(db, 'family', 'lowe', 'subscriptions', String(id)));
+  };
+
+  const updateSub = async (id, updates) => {
+    await updateDoc(doc(db, 'family', 'lowe', 'subscriptions', String(id)), updates);
+  };
+
   const importTxs = async rows => {
     const existingKeys = new Set(txs.map(t => `${t.date}|${t.description}|${t.amount}`));
     const fresh = rows.filter(r => !existingKeys.has(`${r.date}|${r.description}|${r.amount}`));
@@ -187,8 +207,8 @@ export default function App() {
   if (authLoading) return <LoadingScreen />;
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
-  const shared = { txs, cats, addTx, deleteTx, updateTx, deleteTxsByBank, clearAllTxs, addCat, deleteCat, updateCat, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user, testMode, setTestMode };
-  const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, categories: CategoriesView, add: AddView, import: ImportView, ask: AskView };
+  const shared = { txs, cats, subs, addTx, deleteTx, updateTx, deleteTxsByBank, clearAllTxs, addCat, deleteCat, updateCat, addSub, deleteSub, updateSub, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user, testMode, setTestMode };
+  const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, subscriptions: SubscriptionsView, categories: CategoriesView, add: AddView, import: ImportView, ask: AskView };
   const View   = VIEWS[view] || DashboardView;
 
   return (

@@ -91,7 +91,7 @@ export function BottomNav({ view, setView }) {
       display: 'flex', background: C.card, borderTop: `1px solid ${C.border}`,
       flexShrink: 0, paddingBottom: 'env(safe-area-inset-bottom)',
     }}>
-      {NAV.map(({ id, label, Icon }) => {
+      {NAV.filter(n => !n.mobileHide).map(({ id, label, Icon }) => {
         const active = view === id;
         return (
           <button key={id} onClick={() => setView(id)} style={{

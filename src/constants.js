@@ -1,12 +1,12 @@
 import {
-  LayoutDashboard, List, Tag, Plus, Upload, Receipt, Sparkles,
+  LayoutDashboard, List, Tag, Plus, Upload, Receipt, Sparkles, Repeat,
   UtensilsCrossed, Car, ShoppingBag, Film, Heart, Zap, Smartphone, Package,
   Coffee, Bus, ShoppingCart, Music, Activity, Home, CreditCard,
   Plane, Dumbbell, GraduationCap, Gift, Gamepad2, Book, Leaf, Wine,
   Banknote, PiggyBank, TrendingUp,
 } from 'lucide-react';
 
-export const VERSION = 'v1.3.40';
+export const VERSION = 'v1.3.41';
 
 export const C = {
   primary:    '#0ABFA3',
@@ -30,13 +30,14 @@ export const TYPE_COLOR = {
 };
 
 export const NAV = [
-  { id: 'dashboard',    label: 'Dashboard',    Icon: LayoutDashboard },
-  { id: 'transactions', label: 'Transactions', Icon: Receipt },
-  { id: 'summary',      label: 'Summary',      Icon: List },
-  { id: 'categories',   label: 'Categories',   Icon: Tag },
-  { id: 'add',          label: 'Add',          Icon: Plus },
-  { id: 'ask',          label: 'Ask',          Icon: Sparkles },
-  { id: 'import',       label: 'Import',       Icon: Upload, mobileHide: true },
+  { id: 'dashboard',     label: 'Dashboard',     Icon: LayoutDashboard },
+  { id: 'transactions',  label: 'Transactions',  Icon: Receipt },
+  { id: 'summary',       label: 'Summary',       Icon: List },
+  { id: 'subscriptions', label: 'Subscriptions', Icon: Repeat },
+  { id: 'categories',    label: 'Categories',    Icon: Tag },
+  { id: 'add',           label: 'Add',           Icon: Plus },
+  { id: 'ask',           label: 'Ask',           Icon: Sparkles },
+  { id: 'import',        label: 'Import',        Icon: Upload, mobileHide: true },
 ];
 
 // Icons available in the category picker
@@ -84,6 +85,13 @@ export const TX_TYPES = [
   { id: 'income',     label: 'Income',     color: C.income     },
   { id: 'saving',     label: 'Saving',     color: C.saving     },
   { id: 'investment', label: 'Investment', color: C.investment },
+];
+
+export const CADENCES = [
+  { label: 'Weekly',    days: 7   },
+  { label: 'Monthly',   days: 30  },
+  { label: 'Quarterly', days: 91  },
+  { label: 'Yearly',    days: 365 },
 ];
 
 export const RANGES = [
