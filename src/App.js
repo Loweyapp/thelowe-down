@@ -41,6 +41,7 @@ export default function App() {
   const [txs,         setTxs]         = useState([]);
   const [cats,        setCats]        = useState([]);
   const [subs,        setSubs]        = useState([]);
+  const [savingsGoal, setSavingsGoal] = useState(0);
   const [anthropicKey, setAnthropicKey] = useState('');
   const [testMode,    setTestMode]    = useState(false);
   const txCollection = testMode ? 'transactions_test' : 'transactions';
@@ -100,12 +101,17 @@ export default function App() {
       setSubs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
+    const savingsGoalRef = doc(db, 'family', 'lowe', 'settings', 'savings');
+    const unsubGoal = onSnapshot(savingsGoalRef, snap => {
+      setSavingsGoal(snap.exists() ? (snap.data().monthlyGoal || 0) : 0);
+    });
+
     const settingsRef = doc(db, 'users', user.uid, 'settings', 'config');
     getDoc(settingsRef).then(snap => {
       if (snap.exists()) setAnthropicKey(snap.data().anthropicKey || '');
     });
 
-    return () => { unsubTx(); unsubCat(); unsubSubs(); };
+    return () => { unsubTx(); unsubCat(); unsubSubs(); unsubGoal(); };
   }, [user, txCollection]);
 
   const saveAnthropicKey = async key => {
@@ -166,6 +172,10 @@ export default function App() {
     await updateDoc(doc(db, 'family', 'lowe', 'subscriptions', String(id)), updates);
   };
 
+  const saveSavingsGoal = async goal => {
+    await setDoc(doc(db, 'family', 'lowe', 'settings', 'savings'), { monthlyGoal: goal }, { merge: true });
+  };
+
   const importTxs = async rows => {
     const existingKeys = new Set(txs.map(t => `${t.date}|${t.description}|${t.amount}`));
     const fresh = rows.filter(r => !existingKeys.has(`${r.date}|${r.description}|${r.amount}`));
@@ -207,7 +217,7 @@ export default function App() {
   if (authLoading) return <LoadingScreen />;
   if (!user)       return <LoginScreen onSignIn={signIn} />;
 
-  const shared = { txs, cats, subs, addTx, deleteTx, updateTx, deleteTxsByBank, clearAllTxs, addCat, deleteCat, updateCat, addSub, deleteSub, updateSub, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user, testMode, setTestMode };
+  const shared = { txs, cats, subs, savingsGoal, addTx, deleteTx, updateTx, deleteTxsByBank, clearAllTxs, addCat, deleteCat, updateCat, addSub, deleteSub, updateSub, saveSavingsGoal, importTxs, exportCSV, setView, mobile, anthropicKey, saveAnthropicKey, user, testMode, setTestMode };
   const VIEWS  = { dashboard: DashboardView, transactions: TransactionsView, summary: SummaryView, subscriptions: SubscriptionsView, categories: CategoriesView, add: AddView, import: ImportView, ask: AskView };
   const View   = VIEWS[view] || DashboardView;
 

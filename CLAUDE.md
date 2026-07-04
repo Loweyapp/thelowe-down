@@ -35,6 +35,8 @@ Current version: check `VERSION` in `src/constants.js` — bump with every push.
 - Test-mode transactions (parallel collection, used when the in-app "test
   mode" toggle is on): `family/lowe/transactions_test`
 - Categories: `family/lowe/categories`
+- Subscription overrides (not test-mode-scoped): `family/lowe/subscriptions`
+- Monthly savings goal (single doc, not test-mode-scoped): `family/lowe/settings/savings`
 - Anthropic API key (entered via the Ask view): `users/{uid}/settings/config`
 
 `testMode` in `src/App.js` picks which collection (`txCollection`) every
@@ -93,7 +95,7 @@ using:
   (all transactions) and from `TransactionsView` on mobile (exports the
   currently filtered view — respects account/month/review filters).
 
-## Feature state (as of v1.3.42)
+## Feature state (as of v1.3.44)
 
 - `needsReview` flag: settable via voice-uncertainty detection, the
   Add-view form toggle, batch voice entry, and filterable in
@@ -104,9 +106,15 @@ using:
 - Subscriptions view (`src/views/SubscriptionsView.js`, nav id
   `subscriptions`): detects recurring charges across all categories via
   `family/lowe/subscriptions` (not test-mode-scoped — it's a categorization
-  preference, not transaction data). See `BACKLOG.md` for planned
-  refinements.
-- See `BACKLOG.md` for other planned/rejected features.
+  preference, not transaction data).
+- Savings & Investments section lives inside `SummaryView.js` (not a
+  separate nav tab): all-time running totals, a monthly trend chart, an
+  editable savings goal, and a streak counter for consecutive completed
+  months meeting the goal.
+- Import tab (`mobileHide: true`) is intentionally not in the mobile
+  bottom nav — reachable via the shortcut button on Dashboard instead.
+  Confirmed as the preferred setup; don't "fix" this back.
+- See `BACKLOG.md` for planned/rejected features.
 
 ## Working conventions for this repo
 

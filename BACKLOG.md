@@ -9,15 +9,21 @@ where noted.
   (`SubscriptionsView.js`). Detects recurring charges regardless of
   category, with manual overrides (dismiss/edit/add) and known-brand
   keyword recognition.
+- ~~Ask view response styling~~ — done in v1.3.43. Assistant replies now
+  render lightweight markdown (bold/lists/headings) instead of raw
+  asterisks/dashes.
+- ~~Savings & investments tracking~~ — done in v1.3.44. Added to
+  `SummaryView.js` (not a new tab, to avoid further crowding mobile nav):
+  all-time running totals for saved/invested, a monthly trend chart, an
+  editable monthly savings goal (`family/lowe/settings/savings`), a
+  progress bar for the current month, and a streak counter for consecutive
+  completed months hitting the goal.
 
 ## Up next
 
 - **Auto-generated monthly insights** — a short Claude-written summary of
   trends/wins/losses, generated proactively (not user-prompted like Ask
   currently is). Likely surfaces on Dashboard or Summary.
-- **Savings & investments feature** — scope still TBD, deliberately not
-  copying the tithe/tax/savings-% checklist from the YouTube video
-  wholesale. Needs a follow-up conversation on what's actually wanted.
 
 ## Later
 
