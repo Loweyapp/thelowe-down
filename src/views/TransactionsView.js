@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import Papa from 'papaparse';
 import { C, ACCOUNTS, gbp, mkKey, mkLabel, todayStr } from '../constants.js';
 import { NavBtn, TxRow, EmptyState } from '../components/UI.js';
 
@@ -26,6 +27,16 @@ export default function TransactionsView({ txs, cats, deleteTx, updateTx }) {
   const mTxs    = acctTxs
     .filter(t => reviewOnly ? t.needsReview : mkKey(t.date) === sel)
     .sort((a, b) => b.date.localeCompare(a.date));
+
+  const exportFiltered = () => {
+    const csv = Papa.unparse(mTxs.map(({ id, ...t }) => t));
+    const suffix = reviewOnly ? 'review' : sel + (account !== 'All' ? `-${account.toLowerCase()}` : '');
+    const a = Object.assign(document.createElement('a'), {
+      href:     URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
+      download: `the-lowedown-${suffix}.csv`,
+    });
+    a.click();
+  };
 
   const income  = mTxs.filter(t => t.type === 'income').reduce((s, t)  => s + Math.abs(t.amount), 0);
   const expense = mTxs.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
@@ -79,6 +90,14 @@ export default function TransactionsView({ txs, cats, deleteTx, updateTx }) {
           marginLeft: 'auto',
         }}>
           {reviewOnly ? `⚑ Needs review (${txs.filter(t => t.needsReview).length})` : `⚑ ${txs.filter(t => t.needsReview).length} to review`}
+        </button>
+        <button onClick={exportFiltered} title="Export this view as CSV" disabled={!mTxs.length} style={{
+          ...pillStyle(false),
+          display: 'flex', alignItems: 'center', gap: 6,
+          opacity: mTxs.length ? 1 : 0.4,
+          cursor: mTxs.length ? 'pointer' : 'default',
+        }}>
+          <Download size={13} /> CSV
         </button>
       </div>
 

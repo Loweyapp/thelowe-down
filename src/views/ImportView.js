@@ -995,13 +995,15 @@ export default function ImportView({ importTxs, setView, txs, deleteTxsByBank, c
       skipEmptyLines: true,
       complete: ({ data }) => {
         const rows = data.map((r, i) => ({
-          id:          Date.now() + i,
-          date:        r.date?.trim()        || todayStr(),
-          description: r.description?.trim() || '',
-          category:    r.category?.trim()    || 'Other',
-          amount:      parseFloat(r.amount)  || 0,
-          type:        r.type?.trim()        || 'expense',
-          account:     r.account?.trim()     || 'Alex',
+          id:              Date.now() + i,
+          date:            r.date?.trim()            || todayStr(),
+          description:     r.description?.trim()     || '',
+          description_raw: r.description_raw?.trim() || r.description?.trim() || '',
+          category:        r.category?.trim()        || 'Other',
+          amount:          parseFloat(r.amount)      || 0,
+          type:            r.type?.trim()            || 'expense',
+          account:         r.account?.trim()         || 'Alex',
+          needsReview:     r.needsReview?.trim().toLowerCase() === 'true',
         })).filter(r => r.description && r.amount !== 0);
         if (!rows.length) { setError('No valid rows found. Check your CSV format.'); return; }
         setPreview(rows);
@@ -1077,10 +1079,13 @@ export default function ImportView({ importTxs, setView, txs, deleteTxsByBank, c
               fontFamily: 'monospace', fontSize: 12, background: C.bg,
               padding: 12, borderRadius: 8, color: C.text, overflowX: 'auto',
             }}>
-{`date, description, category, amount, type, account
-2026-01-15, Tesco, Groceries, -45.20, expense, Alex
-2026-01-01, Vinted earnings, Income, 23.74, income, Kelly`}
+{`account,date,description,description_raw,category,amount,type,needsReview
+Alex,2026-01-15,Tesco,Tesco,Groceries,-45.20,expense,false
+Kelly,2026-01-01,Vinted earnings,Vinted earnings,Income,23.74,income,false`}
             </pre>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>
+              description_raw and needsReview are optional — description_raw falls back to description, needsReview defaults to false.
+            </div>
           </Card>
 
           <div
@@ -1155,7 +1160,7 @@ export default function ImportView({ importTxs, setView, txs, deleteTxsByBank, c
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: C.bg }}>
-                    {['Date', 'Description', 'Category', 'Amount', 'Type', 'Account'].map(h => (
+                    {['Date', 'Description', 'Category', 'Amount', 'Type', 'Account', ''].map(h => (
                       <th key={h} style={{
                         padding: '10px 12px', textAlign: 'left', fontWeight: 600,
                         color: C.muted, borderBottom: `1px solid ${C.border}`,
@@ -1180,6 +1185,14 @@ export default function ImportView({ importTxs, setView, txs, deleteTxsByBank, c
                         }}>{r.type}</span>
                       </td>
                       <td style={{ padding: '10px 12px', color: C.muted }}>{r.account || 'Alex'}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {r.needsReview && (
+                          <span style={{
+                            padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                            background: '#FEF3C7', color: '#92400E',
+                          }}>⚑ Review</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
