@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Check, X, Pencil, RotateCcw, Repeat } from 'lucide-react';
-import { C, CADENCES, gbp } from '../constants.js';
+import { C, CADENCES, SUBSCRIPTION_KEYWORDS, NON_SUBSCRIPTION_KEYWORDS, gbp, todayStr } from '../constants.js';
 import { Card, Btn, Field, StatCard, EmptyState } from '../components/UI.js';
 
 const inp = {
@@ -29,9 +29,23 @@ const cadenceLabel = days => {
 
 const monthlyEquiv = (amount, intervalDays) => amount * (30 / (intervalDays || 30));
 
+const KNOWN_RE   = new RegExp(SUBSCRIPTION_KEYWORDS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'i');
+const EXCLUDE_RE = new RegExp(`\\b(${NON_SUBSCRIPTION_KEYWORDS.join('|')})\\b`, 'i');
+
+// How close intervalDays is to a recognised billing cadence (0 = exact match).
+const nearestCadenceDiff = days => Math.min(...CADENCES.map(c => Math.abs(c.days - days) / c.days));
+
 // Detect recurring charges by description, regardless of category: same/similar
 // amount repeating at a roughly consistent interval. Category-based grouping
 // alone misses subscriptions filed under Entertainment, Bills & Utilities, etc.
+//
+// Two paths: a known brand/generic keyword (Netflix, "subscription", etc.) is
+// trusted even with a single charge or an irregular amount. Everything else
+// needs at least 3 charges landing close to a real billing cadence (weekly/
+// monthly/quarterly/yearly) with a consistent amount - otherwise two
+// coincidentally similar purchases months apart get misread as a subscription.
+// Rent and installment/loan repayments are excluded outright: they're
+// recurring, but not a cancellable ongoing service.
 function detectCandidates(txs) {
   const groups = {};
   txs.filter(t => t.type === 'expense' && t.description).forEach(t => {
@@ -39,34 +53,50 @@ function detectCandidates(txs) {
     (groups[key] = groups[key] || []).push(t);
   });
 
+  const today = todayStr();
+
   return Object.entries(groups)
-    .filter(([, g]) => g.length >= 2)
+    .filter(([key]) => !EXCLUDE_RE.test(key))
     .map(([key, group]) => {
       const sorted    = [...group].sort((a, b) => a.date.localeCompare(b.date));
       const amounts   = sorted.map(t => Math.abs(t.amount));
       const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
-      const amountSpread = (Math.max(...amounts) - Math.min(...amounts)) / avgAmount;
+      const amountSpread = sorted.length > 1 ? (Math.max(...amounts) - Math.min(...amounts)) / avgAmount : 0;
 
       const gaps = [];
       for (let i = 1; i < sorted.length; i++) {
         gaps.push((new Date(sorted[i].date) - new Date(sorted[i - 1].date)) / 86400000);
       }
-      const avgGap    = gaps.reduce((s, g) => s + g, 0) / gaps.length;
-      const gapSpread = Math.max(...gaps.map(g => Math.abs(g - avgGap))) / avgGap;
+      const avgGap    = gaps.length ? gaps.reduce((s, g) => s + g, 0) / gaps.length : null;
+      const gapSpread = gaps.length ? Math.max(...gaps.map(g => Math.abs(g - avgGap))) / avgGap : 0;
 
-      const last = sorted[sorted.length - 1];
+      const last  = sorted[sorted.length - 1];
+      const known = KNOWN_RE.test(key);
+
+      const intervalDays = avgGap !== null ? Math.round(avgGap) : null;
+      const nextDate      = intervalDays ? addDays(last.date, intervalDays) : null;
+      const daysOverdue   = nextDate ? (new Date(today) - new Date(nextDate)) / 86400000 : 0;
+      const lapsed        = !!nextDate && daysOverdue > 1.5 * intervalDays;
+
       return {
-        key,
+        key, known, lapsed,
         label:        last.description,
         category:     last.category,
         amount:       avgAmount,
-        intervalDays: Math.round(avgGap),
+        intervalDays,
         occurrences:  sorted.length,
         lastDate:     last.date,
         amountSpread, gapSpread,
       };
     })
-    .filter(c => c.amountSpread <= 0.35 && c.gapSpread <= 0.6 && c.intervalDays >= 5 && c.intervalDays <= 400);
+    .filter(c => {
+      if (c.known) return true;
+      return c.occurrences >= 3
+        && c.amountSpread <= 0.35
+        && c.gapSpread <= 0.5
+        && c.intervalDays !== null
+        && nearestCadenceDiff(c.intervalDays) <= 0.2;
+    });
 }
 
 function SubForm({ initial, cats, onSave, onCancel }) {
@@ -148,7 +178,7 @@ export default function SubscriptionsView({ txs, cats, subs, addSub, deleteSub, 
   });
 
   active.sort((a, b) => monthlyEquiv(b.amount, b.intervalDays) - monthlyEquiv(a.amount, a.intervalDays));
-  const totalMonthly = active.reduce((s, c) => s + monthlyEquiv(c.amount, c.intervalDays), 0);
+  const totalMonthly = active.filter(c => !c.lapsed).reduce((s, c) => s + monthlyEquiv(c.amount, c.intervalDays), 0);
 
   const dismiss = c => c.overrideId ? updateSub(c.overrideId, { dismissed: true }) : addSub({ key: c.key, dismissed: true });
   const restore = c => updateSub(c.overrideId, { dismissed: false });
@@ -189,7 +219,15 @@ export default function SubscriptionsView({ txs, cats, subs, addSub, deleteSub, 
             <Repeat size={17} color={C.primary} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</div>
+              {c.lapsed && (
+                <span style={{
+                  padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
+                  background: '#FEF3C7', color: '#92400E', flexShrink: 0,
+                }}>Possibly ended</span>
+              )}
+            </div>
             {!editing && (
               <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
                 {gbp(c.amount)} · {cadenceLabel(c.intervalDays)} · {c.category}
@@ -215,7 +253,9 @@ export default function SubscriptionsView({ txs, cats, subs, addSub, deleteSub, 
 
         {!editing && c.occurrences > 0 && (
           <div style={{ fontSize: 12, color: C.muted, marginTop: 8, paddingLeft: 48 }}>
-            Last charged {fmtDate(c.lastDate)} · next expected ~{fmtDate(addDays(c.lastDate, c.intervalDays))} · {c.occurrences} charges seen
+            Last charged {fmtDate(c.lastDate)}
+            {c.intervalDays ? ` · next expected ~${fmtDate(addDays(c.lastDate, c.intervalDays))}` : ''}
+            {' · '}{c.occurrences} charge{c.occurrences !== 1 ? 's' : ''} seen
           </div>
         )}
 

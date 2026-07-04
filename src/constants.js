@@ -6,7 +6,7 @@ import {
   Banknote, PiggyBank, TrendingUp,
 } from 'lucide-react';
 
-export const VERSION = 'v1.3.41';
+export const VERSION = 'v1.3.42';
 
 export const C = {
   primary:    '#0ABFA3',
@@ -92,6 +92,24 @@ export const CADENCES = [
   { label: 'Monthly',   days: 30  },
   { label: 'Quarterly', days: 91  },
   { label: 'Yearly',    days: 365 },
+];
+
+// Brand/generic terms strong enough to flag as a subscription on their own,
+// even with just one charge so far or an irregular amount.
+export const SUBSCRIPTION_KEYWORDS = [
+  'subscription', 'membership', 'netflix', 'spotify', 'disney+', 'disney plus',
+  'amazon prime', 'prime video', 'apple music', 'apple tv', 'apple storage', 'icloud',
+  'audible', 'patreon', 'youtube premium', 'youtube music', 'xbox game pass', 'playstation plus',
+  'nintendo online', 'chatgpt', 'openai', 'claude', 'anthropic', 'nordvpn', 'expressvpn',
+  'dropbox', 'adobe', 'microsoft 365', 'office 365', 'linkedin premium', 'kindle unlimited',
+  'hulu', 'hbo', 'paramount+', 'crunchyroll', 'duolingo', 'headspace', 'calm app', 'peloton',
+];
+
+// Recurring but NOT subscriptions: rent is an open-ended housing cost, and
+// installment/loan repayments are a finite series paying off a purchase -
+// neither is a cancellable ongoing service.
+export const NON_SUBSCRIPTION_KEYWORDS = [
+  'rent', 'mortgage', 'installment', 'instalment', 'repayment', 'loan',
 ];
 
 export const RANGES = [
